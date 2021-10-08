@@ -41,7 +41,7 @@ Section that explains the process and techniques used, including data cleaning, 
 
 # Results
 Our naive model, that uses the calculated mean rating ($\hat{\mu}$ = `r round(mean_rating,2)` stars) and applies it to all predicted ratings, no matter the movie or user, has -- as one can expect -- a pretty mediocre RMSE (RMSE$_{n}$= `r round(rmse_naive,3)`). 
-The movie-effect model improves considerably the precision of the prediction, with (RMSE$_{i}$= `r round(rmse_movie,3)`) ?
+The movie-effect model improves sensibly the precision of the prediction, with RMSE$_{i}$= `r round(rmse_movie,3)`. The movie/user-effect model, while still quite basic, further improves the result, with RMSE$_{i,u}$= `r round(rmse_movie_user,3)`
 
 Section that presents the modeling results and discusses the model performance
 

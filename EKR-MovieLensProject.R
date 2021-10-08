@@ -28,14 +28,13 @@ dl <- tempfile()
 #movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
 ##### DEBUT A ENLEVER ####
-dl <- "~/projects/movielens/ml-20m.zip"   # /!\ GROS dataset
-ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-20m/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-movies <- str_split_fixed(readLines(unzip(dl, "ml-20m/movies.csv")), "\\::", 3)
+#dl <- "~/projects/movielens/ml-20m.zip"   # /!\ GROS dataset
+#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-20m/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+#movies <- str_split_fixed(readLines(unzip(dl, "ml-20m/movies.csv")), "\\::", 3)
 
-#dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
-#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
-
+dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
+ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
 ##### FIN A ENLEVER ####
 
 colnames(movies) <- c("movieId", "title", "genres")
@@ -111,11 +110,27 @@ movie_avg <- edx %>%
    group_by(movieId) %>% 
    summarize(b_i = mean(rating - mean_rating))
 # Prediction using movie-effect model
-predicted_movie <- mean_rating + edx %>% 
+predictedM <- mean_rating + validation %>% 
    left_join(movie_avg, by='movieId') %>%
    .$b_i
 # RMSE of the movie-effect model
-rmse_movie <- RMSE(validation$rating, predicted_movie)
+rmse_movie <- RMSE(validation$rating, predictedM)
+
+### Model that takes into account the movie/user-effect
+# Difference between the rating of each user and the average rating of each movie
+user_avg <- edx %>% 
+   left_join(movie_avg, by='movieId') %>%
+   group_by(userId) %>%
+   summarize(b_u = mean(rating - mean_rating - b_i))
+#Prediction using movie/user-effect model
+predictedMU <- validation %>% 
+   left_join(movie_avg, by='movieId') %>%
+   left_join(user_avg, by='userId') %>%
+   mutate(prediction = mean_rating + b_i + b_u) %>%
+   .$prediction
+# RMSE of the movie/user-effect model
+rmse_movie_user <- RMSE(validation$rating, predictedMU)
 
 # Save ALL information, for the Rmd report
 save.image (file = "EKR-MovieLens.RData")
+
