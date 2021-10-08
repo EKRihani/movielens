@@ -22,15 +22,15 @@ library(data.table)
 dl <- tempfile()
 #download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl) # Download Remote File
 
-dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
-ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
-                 col.names = c("userId", "movieId", "rating", "timestamp"))
-movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+#dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
+#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+#                 col.names = c("userId", "movieId", "rating", "timestamp"))
+#movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
 ##### DEBUT A ENLEVER ####
-#dl <- "~/projects/movielens/ml-20m.zip"   # /!\ GROS dataset
-#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-20m/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-20m/movies.csv")), "\\::", 3)
+dl <- "~/projects/movielens/ml-20m.zip"   # /!\ GROS dataset
+ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-20m/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+movies <- str_split_fixed(readLines(unzip(dl, "ml-20m/movies.csv")), "\\::", 3)
 
 #dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
 #ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
