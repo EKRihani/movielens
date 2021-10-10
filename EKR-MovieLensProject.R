@@ -22,19 +22,19 @@ library(data.table)
 dl <- tempfile()
 #download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl) # Download Remote File
 
-#dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
-#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
-#                 col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
+ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+                 col.names = c("userId", "movieId", "rating", "timestamp"))
+movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
 ##### DEBUT A ENLEVER ####
 #dl <- "~/projects/movielens/ml-20m.zip"   # /!\ GROS dataset
 #ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-20m/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
 #movies <- str_split_fixed(readLines(unzip(dl, "ml-20m/movies.csv")), "\\::", 3)
 
-dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
-ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
+#dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
+#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+#movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
 ##### FIN A ENLEVER ####
 
 colnames(movies) <- c("movieId", "title", "genres")
@@ -110,8 +110,6 @@ mean_rating <- mean(edx$rating)
 rmse_naive <- RMSE(validation$rating, mean_rating)
 
 # Linear Model that takes into account the movie-effect
-   fit <- lm(rating ~ as.factor(userId) + as.factor(userId), data = edx)
-
    # Calculating alpha_movie by computing the difference between the rating of each movie and the average rating
    movie_avg <- edx %>% 
          group_by(movieId) %>% 
