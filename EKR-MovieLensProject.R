@@ -100,36 +100,43 @@ RMSE <- function(true_rating, predicted_rating){
    round(sqrt(mean((true_rating - predicted_rating)^2)),5)
 }
 
-### Naive prediction, that applies the mean rating to all predictions
+
+######################################################################
+# Multiple Linear Regression Model
+######################################################################
+
+# Naive prediction, that applies the mean rating (beta) to all predictions
 mean_rating <- mean(edx$rating)
 rmse_naive <- RMSE(validation$rating, mean_rating)
 
-### Model that takes into account the movie-effect
-# Difference between the rating of each movie and the average rating
-movie_avg <- edx %>% 
-   group_by(movieId) %>% 
-   summarize(b_i = mean(rating - mean_rating))
-# Prediction using movie-effect model
-predictedM <- mean_rating + validation %>% 
-   left_join(movie_avg, by='movieId') %>%
-   .$b_i
-# RMSE of the movie-effect model
-rmse_movie <- RMSE(validation$rating, predictedM)
+# Linear Model that takes into account the movie-effect
+   fit <- lm(rating ~ as.factor(userId) + as.factor(userId), data = edx)
 
-### Model that takes into account the movie/user-effect
-# Difference between the rating of each user and the average rating of each movie
-user_avg <- edx %>% 
-   left_join(movie_avg, by='movieId') %>%
-   group_by(userId) %>%
-   summarize(b_u = mean(rating - mean_rating - b_i))
-#Prediction using movie/user-effect model
-predictedMU <- validation %>% 
-   left_join(movie_avg, by='movieId') %>%
-   left_join(user_avg, by='userId') %>%
-   mutate(prediction = mean_rating + b_i + b_u) %>%
-   .$prediction
-# RMSE of the movie/user-effect model
-rmse_movie_user <- RMSE(validation$rating, predictedMU)
+   # Calculating alpha_movie by computing the difference between the rating of each movie and the average rating
+   movie_avg <- edx %>% 
+         group_by(movieId) %>% 
+         summarize(alpha_movie = mean(rating - mean_rating))
+   # Prediction using movie-effect model
+   predictedM <- mean_rating + validation %>% 
+      left_join(movie_avg, by='movieId') %>%
+      .$alpha_movie
+   # RMSE of the movie-effect model
+   rmse_movie <- RMSE(validation$rating, predictedM)
+
+# Model that takes into account the movie/user-effect
+   # Calculating alpha_user by computing the difference between the rating of each user and the average rating of each movie
+   user_avg <- edx %>% 
+      left_join(movie_avg, by='movieId') %>%
+      group_by(userId) %>%
+      summarize(alpha_user = mean(rating - mean_rating - alpha_movie))
+   #Prediction using movie/user-effect model
+   predictedMU <- validation %>% 
+      left_join(movie_avg, by='movieId') %>%
+      left_join(user_avg, by='userId') %>%
+      mutate(prediction = mean_rating + alpha_movie + alpha_user) %>%
+      .$prediction
+   # RMSE of the movie/user-effect model
+   rmse_movie_user <- RMSE(validation$rating, predictedMU)
 
 # Save ALL information, for the Rmd report
 save.image (file = "EKR-MovieLens.RData")
