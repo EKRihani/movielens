@@ -23,16 +23,22 @@ The provided information inclue the user unique ID (`r column_names[1]`), the mo
 
 # 2. Methods and Analysis
 This project will aim to progressively improve the accuracy of our predictions, step by step, by building a model based on the data of a training set (edx, 90% of the database, selected randomly) and then applying this model to predict the values of a validation set (10% of the database) and compare our prediction against the actual value.  
-The metric used in this study to evaluate the accuracy of the prediction is the root-mean-squared error (RMSE), given by : $$\sqrt{ \frac{1}{N} \sum_{u,i}\left(\hat{y}_{i} -  y_{i}\right)^{2}}$$ With N the number of ratings, $\hat{y}_{i}$ the rating that is predicted by the model built with the training set and $y_{i}$ the actual rating of the testing set. The lower the RMSE, the more accurate the model.  
+The metric used in this study to evaluate the accuracy of the prediction is the root-mean-squared error (RMSE), given by : $$\sqrt{ \frac{1}{N} \sum_{m,u}\left(\hat{y}_{m,u} -  y_{m,u}\right)^{2}}$$ With N the number of ratings, $\hat{y}_{m,u}$ the rating (for the movie m, by the user u) that is predicted by the model built with the training set and $y_{m,u}$ the actual rating of the testing set. The lower the RMSE, the more accurate the model.  
 
 ## 2.1 Multiple Linear Regression
 The most basic models are Multiple Linear Regression, where $Y = \sum_{i=1}^{n} \beta + \alpha_{i}X_{i}$ with $Y$ our prediction, $\beta$ the intercept (mean rating), $\alpha_{1}$ to $\alpha_{n}$ the slopes and $X_{1}$ to $X_{n}$ the independent variables. This MLR model assumes that all variables are independent. In other words, this model assumes -- for example -- that users have absolutely no genre or era preferences. We can already see one of the limitations of the MLR models.  
 The most basic linear model would be a naive model that calculates the mean rating of our testing set ($\beta = \hat{\mu}$) and then applies this rating to all predictions ($\mathbf{Y} = \beta + \varepsilon$), with no distinction between movies, genres, users... We can expect this model to give mediocre results.  
 A more refined model includes the effect $\alpha_{m}$ of the movie m ($\mathbf{Y}_{m} = \beta + \alpha_{m} + \varepsilon_{m}$), with $\alpha_{m}$ a term that integrates the quality of each movie.  
-We could actually use the linear model (lm) function on some high end computers with 64+ GB of RAM, but a much more elegant (and efficient) approach is to simply use $Y_{m} = \beta + \alpha_{m}X_{m}\Leftrightarrow{} \alpha_{m}X_{m} = Y_{m} - \beta$.  
+We could actually use the linear model (*lm*) function on some high end computers with 64+ GB of RAM, but a much more elegant (and efficient) approach is to simply use $Y_{m} = \beta + \alpha_{m}X_{m}\Leftrightarrow{} \alpha_{m}X_{m} = Y_{m} - \beta$.  
 
 In other words, we evaluate the movie effect by computing the difference between the mean rating of each movie and the average rating for all movies. This approach will be used on all our MLR models, with $$\alpha_{n+1}X_{n+1} = Y - \left(\beta + \sum_{i=1}^{n} \alpha_{i}X_{i}\right)$$ 
 The movie-effect model can thus be improved to $\mathbf{Y}_{u,m} = \beta + \alpha_{m} + \alpha_{u} + \varepsilon_{u,m}$, by taking into account the average "generosity" of each user ($\alpha_{u}$).  
+
+Our next step is to take into account the time variable. However, there are numerous time variable that could be taken into account : the year of the movie, the year of the rating, the time that is elapsed between the movie and the rating, and even the month or the day of the rating, if we want t take into account some seasonal or weekly effect.    
+
+According to the MovieLens project, the rating timestamp is based on a 1970-01-01 origin, that can be used to converted the timestamp in a legible YYYY-MM-DD hh:mm:ss format (with the *as.POSIXct* function), that can be used to extract year and month of each rating. We then extract the year from the *title* in two steps : first we isolate all " (YYYY)" patterns (to take into account titles such as 2001 : A Space Odyssey...) and then extract the YYYY pattern from the previous one.
+
+
 
 Section that explains the process and techniques used, including data cleaning, data exploration and visualization, insights gained, and your modeling approach
 
