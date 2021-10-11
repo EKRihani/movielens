@@ -34,7 +34,7 @@ We could actually use the linear model (*lm*) function on some high end computer
 In other words, we evaluate the movie effect by computing the difference between the mean rating of each movie and the average rating for all movies. This approach will be used on all our MLR models, with $$\alpha_{n+1}X_{n+1} = Y - \left(\beta + \sum_{i=1}^{n} \alpha_{i}X_{i}\right)$$ 
 The movie-effect model can thus be improved to $\mathbf{Y}_{u,m} = \beta + \alpha_{m} + \alpha_{u} + \varepsilon_{u,m}$, by taking into account the average "generosity" of each user ($\alpha_{u}$).  
 
-Our next step is to take into account the time variable. However, there are numerous time variable that could be taken into account : the year of the movie, the year of the rating, the time that is elapsed between the movie and the rating, and even the month or the day of the rating, if we want t take into account some seasonal or weekly effect.    
+Our next step is to take into account the time variable. However, there are numerous time variable that could be taken into account : the year of the movie, the year of the rating, the time that is elapsed between the movie and the rating, or even the month or the day of the rating, if we want to take into account some seasonal or weekly effect.    
 
 According to the MovieLens project, the rating timestamp is based on a 1970-01-01 origin, that can be used to converted the timestamp in a legible YYYY-MM-DD hh:mm:ss format (with the *as.POSIXct* function), that can be used to extract year and month of each rating. We then extract the year from the *title* in two steps : first we isolate all " (YYYY)" patterns (to take into account titles such as 2001 : A Space Odyssey...) and then extract the YYYY pattern from the previous one.
 

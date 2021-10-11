@@ -22,19 +22,19 @@ library(data.table)
 dl <- tempfile()
 #download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl) # Download Remote File
 
-#dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
-#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
-#                 col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
+ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+                 col.names = c("userId", "movieId", "rating", "timestamp"))
+movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
 ##### DEBUT A ENLEVER ####
 #dl <- "~/projects/movielens/ml-20m.zip"   # /!\ GROS dataset
 #ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-20m/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
 #movies <- str_split_fixed(readLines(unzip(dl, "ml-20m/movies.csv")), "\\::", 3)
 
-dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
-ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
+#dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
+#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+#movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
 ##### FIN A ENLEVER ####
 
 colnames(movies) <- c("movieId", "title", "genres")
@@ -104,7 +104,7 @@ column_names <- colnames(edx)
 
 # Root-Mean-Squared Error calculation function
 RMSE <- function(true_rating, predicted_rating){
-   round(sqrt(mean((true_rating - predicted_rating)^2)),5)
+   round(sqrt(mean((true_rating - predicted_rating)^2)),6)
 }
 
 
@@ -144,7 +144,7 @@ rmse_naive <- RMSE(validation$rating, mean_rating)
    rmse_movie_user <- RMSE(validation$rating, predictedMU)
 
 # Model that takes into account the year effect
-   # Converting rating timestamp to "y-m-d h:min:s" format
+   # Converting rating timestamp to "y-m-d h:min:s" format on training set
    edx <- edx %>% 
       mutate(rating_time = as.POSIXct(timestamp, origin="1970-01-01")) %>%
       # Extracting year/month of the rating  
@@ -156,28 +156,61 @@ rmse_naive <- RMSE(validation$rating, mean_rating)
       # Writing correctly the year of the movie
       mutate(movie_year = as.numeric(str_extract(movie_year, "\\d{4}")))
 
-   # Identifying the most relevant time factor
-      # By movie year (mean rating by movie year)
-      edx <- edx %>% group_by(movie_year) %>% 
-         mutate(RmoyMY = mean(rating)) %>% 
-      # By year span between rating year and movie year (mean rating by delta year)
-         mutate(delta_year = rating_year - movie_year) %>% 
-         group_by(delta_year) %>%
-         mutate(RmoyDY = mean(rating)) %>%
-      # By rating month (mean rating by rating month)
-         group_by(rating_month) %>%
-         mutate(RmoyRM = mean(rating))
-   
-plot_movie_year <- ggplot(edx, aes(y=RmoyMY, x=movie_year)) + 
-   geom_point() +
-   geom_smooth()
-plot_delta_year <- ggplot(edx, aes(y=RmoyDY, x=delta_year)) + 
-   geom_point() +
-   geom_smooth()   
-plot_movie_year <- ggplot(edx, aes(y=RmoyRM, x=rating_month)) + 
-   geom_point() +
-   geom_smooth()
+      # Converting rating timestamp to "y-m-d h:min:s" format on validation set
+      validation <- validation %>% 
+         mutate(rating_time = as.POSIXct(timestamp, origin="1970-01-01")) %>%
+         # Extracting year/month of the rating  
+         mutate(rating_year = year(rating_time), rating_month = month(rating_time))
+      # Extracting year of the movie : " (19YY)" or " (20YY)"
+      validation <- validation %>% 
+         mutate(movie_year = str_extract(title,year_pattern)) %>%
+         # Writing correctly the year of the movie
+         mutate(movie_year = as.numeric(str_extract(movie_year, "\\d{4}")))  
+            
+      # Calculating alpha_movie_year by computing the difference between the rating of year and the average rating of each movie
+      year_avg <- edx %>% 
+         left_join(movie_avg, by='movieId') %>%
+         left_join(user_avg, by='userId') %>%
+         group_by(movie_year) %>%
+         summarize(alpha_movie_year = mean(rating - mean_rating - alpha_movie - alpha_user))
+      #Prediction using movie/user-effect model
+      predictedMUY <- validation %>% 
+         left_join(movie_avg, by='movieId') %>%
+         left_join(user_avg, by='userId') %>%
+         left_join(year_avg, by='movie_year') %>%
+         mutate(prediction = mean_rating + alpha_movie + alpha_user + alpha_movie_year) %>%
+         .$prediction
+      # RMSE of the movie/user/year-effect model
+      rmse_movie_user_year <- RMSE(validation$rating, predictedMUY)
 
+      # Calculating alpha_rating_month by computing the difference between the rating of year and the average rating of each movie
+      month_avg <- edx %>% 
+         left_join(movie_avg, by='movieId') %>%
+         left_join(user_avg, by='userId') %>%
+         group_by(rating_month) %>%
+         summarize(alpha_rating_month = mean(rating - mean_rating - alpha_movie - alpha_user))
+      #Prediction using movie/user/month-effect model
+      predictedMUM <- validation %>% 
+         left_join(movie_avg, by='movieId') %>%
+         left_join(user_avg, by='userId') %>%
+         left_join(month_avg, by='rating_month') %>%
+         mutate(prediction = mean_rating + alpha_movie + alpha_user + alpha_rating_month) %>%
+         .$prediction
+      # RMSE of the movie/user/month-effect model
+      rmse_movie_user_month <- RMSE(validation$rating, predictedMUM)
+
+# Plotting year effect
+   # Mean rating by movie year
+#   edx <- edx %>% group_by(movie_year) %>% 
+#      mutate(RmoyMY = mean(rating))        
+   # Plot
+#   plot_movie_year <- ggplot(edx, aes(y=RmoyMY, x=movie_year)) + 
+#      geom_point() +
+#      geom_smooth()
+#   plot_movie_year
+
+#Clear large data sets
+rm(predictedM, predictedMU, predictedMUM, predictedMUY)      
 # Save ALL information, for the Rmd report
 save.image (file = "EKR-MovieLens.RData")
 
