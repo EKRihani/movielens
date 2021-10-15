@@ -143,3 +143,5 @@ time.taken <- end.time - start.time
 time.taken
 #rm(end.time, time.taken, start.time)
 # Chrono A ENLEVER
+
+save.image(file = "EKR-MovieLens.RData")
