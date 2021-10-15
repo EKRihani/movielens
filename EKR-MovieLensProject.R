@@ -82,16 +82,19 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 #rm(end.time, time.taken, start.time)
 # Chrono A ENLEVER
 
-# Downloading and loading the packages used in this study
-if(!require(dplyr)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
-if(!require(lubridate)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
-if(!require(stringr)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
-if(!require(ggplot2)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+# Installing required packages/libraries
+if(!require(dplyr)) install.packages("dplyr", repos = "http://cran.us.r-project.org")
+if(!require(lubridate)) install.packages("lubridate", repos = "http://cran.us.r-project.org")
+if(!require(stringr)) install.packages("stringr", repos = "http://cran.us.r-project.org")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
 
+# Loading required packages/libraries
 library(dplyr)
 library(lubridate)
 library(stringr)
 library(ggplot2)
+library(recommenderlab)
 
 # Basic data to introduce the global dataset (training + validation)
 total_number_ratings <- nrow(union(edx,validation))
@@ -103,7 +106,7 @@ column_names <- colnames(edx)
 
 
 # Root-Mean-Squared Error calculation function
-RMSE <- function(true_rating, predicted_rating){
+Rmse <- function(true_rating, predicted_rating){
    round(sqrt(mean((true_rating - predicted_rating)^2)),6)
 }
 
