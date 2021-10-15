@@ -123,9 +123,11 @@ EDX <- Edx[1:5401]
 # Mean rating for each movie
 #hist(colMeans(train))
 
-recom <- Recommender(EDX, "IBCF")
+#CHRONO
+start.time <- Sys.time()
+recom <- Recommender(EDX, "UBCF")
 #recom <- Recommender(getData(e, "train"), "UBCF")
-#UBCF, IBCF, POPULAR, RANDOM ALS, ALS_implicit, SVD, SVDF
+#UBCF, IBCF, POPULAR, RANDOM, ALS, ALS_implicit, SVD, SVDF
 
 predi <- predict(recom, VALIDATION, type = "ratingMatrix")
 #predi <- predict(recom, getData(e,"known"), type = "ratings")
@@ -134,3 +136,10 @@ calcPredictionAccuracy(VALIDATION,predi)
 #Accuracy <- calcPredictionAccuracy(predi,getData(e, "unknown"))
 #Accuracy["RMSE"]
 #RMSE(predi,getData(e, "unknown"))
+
+# CHRONO
+end.time <- Sys.time()
+time.taken <- end.time - start.time
+time.taken
+#rm(end.time, time.taken, start.time)
+# Chrono A ENLEVER
