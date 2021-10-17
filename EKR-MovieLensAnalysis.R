@@ -2,14 +2,6 @@
 # Create edx set, validation set (final hold-out test set)
 ##########################################################
 
-######### MULTITHREAD LIBRARY (needs OpenBLAS)
-library(RhpcBLASctl)
-Ncores <- get_num_procs()
-blas_set_num_threads(Ncores)
-omp_set_num_threads(Ncores)
-###########################
-
-
 # Note: this process could take a couple of minutes
 
 if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
@@ -77,17 +69,22 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 # Begin ANALYSIS
 ##########################################################
 
+######### MULTITHREAD LIBRARY (needs OpenBLAS)
+library(RhpcBLASctl)
+Ncores <- get_num_procs()
+blas_set_num_threads(Ncores)
+omp_set_num_threads(Ncores)
+###########################
+
 ## Libraries
-# Checking/installing required packages/libraries
-if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
-if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
-if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
-#if(!require(dplyr)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
-# Loading required packages/libraries
-library(reshape2)     # For acast function
-library(ggplot2)     # For pretty graphics
-library(recommenderlab)     # For data analysis
-#library(dplyr)       # For union
+   # Checking/installing required packages/libraries
+   if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
+   if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+   if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
+   # Loading required packages/libraries
+   library(reshape2)     # For acast function
+   library(ggplot2)     # For pretty graphics
+   library(recommenderlab)     # For data analysis
 
 ## Basic data to introduce the global dataset (training + validation)
 total_dataset <- full_join(edx,validation)
@@ -104,11 +101,11 @@ rm(total_dataset)
    # Deleting these useless lines in the training set (more efficient than adding empty lines in the validation set)
    edx <- anti_join(edx, MissingVal, by = "movieId")
 
-# CHRONO
+##### CHRONO #####
 start.time <- Sys.time()
 
 ## Preparing datasets : adapting training and validation sets to recommenderlab
-   # 10-star scale + integer conversion (uses less RAM, less swapping : vastly improves performance)
+   # 10-star scale + integer conversion (uses less RAM = less swapping = improves performance)
    edx$rating <- edx$rating*2
    edx$rating <- as.integer(edx$rating)
    edx$movieId <- as.integer(edx$movieId)
@@ -129,16 +126,18 @@ start.time <- Sys.time()
    validation <- as(validation, "realRatingMatrix")  
    gc(verbose = FALSE)     # Freeing memory
 
-# Réduction taille pour benchmarks
+#### Réduction taille pour benchmarks #####
 N <- nrow(edx)*0.3
 edx <- edx[1:N]
 validation <- validation[1:N]
 
+##### CHRONO #####
 end.time <- Sys.time()
 time.matrix <- end.time - start.time
 time.matrix
-#hist(getRatings(train))
+#####################
 
+#hist(getRatings(train))
 # Normalized distribution of ratings
 #hist(getRatings(normalize(train, method ="Z-score"))) 
 # Number of movies rated by each user
@@ -146,7 +145,7 @@ time.matrix
 # Mean rating for each movie
 #hist(colMeans(train))
 
-#CHRONO
+######CHRONO#####
 start.time <- Sys.time()
 
 recommend <- Recommender(edx, "POPULAR")
@@ -165,13 +164,13 @@ rm(predictions)
 gc(verbose = FALSE)
 
 Accuracy["RMSE"]/2
-### CHRONO
+
+##### CHRON O#####
 end.time <- Sys.time()
 time.pred <- end.time - start.time
 time.matrix
 time.pred
-### Chrono A ENLEVER
+##########################"
 
-
-#save.image(file = "EKR-MovieLens.RData")
+save.image(file = "EKR-MovieLens.RData")
 
