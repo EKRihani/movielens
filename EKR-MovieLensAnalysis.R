@@ -2,6 +2,13 @@
 # Create edx set, validation set (final hold-out test set)
 ##########################################################
 
+######### MULTITHREAD LIBRARY (needs OpenBLAS)
+library(RhpcBLASctl)
+Nthreads <- blas_get_num_procs()
+blas_set_num_threads(Nthreads)
+###########################
+
+
 # Note: this process could take a couple of minutes
 
 if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
@@ -86,21 +93,15 @@ total_number_movies <- n_distinct(union(edx$movieId, validation$movieId))
 total_number_users <-n_distinct(union(edx$userId, validation$userId))
 column_names <- colnames(edx)
 
+
 ## Preparing datasets : removing all data that won't be used
    # Detecting training set moviesId that are not useful (not in the validation set)
    MissingVal <- anti_join(edx, validation, by = "movieId")
    MissingVal <- MissingVal %>% select(movieId) %>% group_by(movieId) %>% slice(1)
    # Deleting these useless lines in the training set
-#   edx <- anti_join(edx, MissingVal, by = "movieId")
+   edx <- anti_join(edx, MissingVal, by = "movieId")
 
-   # Alternative : add missing movies rows in the validation set, with empty (NAs) columns, but calculations would be MUCH slower
-   MissingVal$genres <- NA
-   MissingVal$timestamp <- NA
-   MissingVal$title <- NA
-  MissingVal$userId <- NA
-  MissingVal$rating <- NA
-  validation <- rbind(validation, MissingVal)
-
+# CHRONO
 start.time <- Sys.time()
 
 ## Preparing datasets : adapting training and validation sets to recommenderlab
@@ -117,13 +118,13 @@ start.time <- Sys.time()
    # Raising R memory limit size (otherwise won't be able to allocate vector of size 5+Gb...)
    memory.limit(size = 50000)
    # Converting edx and validation sets to a matrix, then a realRatingMatrix (class used by recommenderlab)
-   gc(verbose = FALSE) # Freeing as much memory as possible
+   gc(verbose = FALSE)     # Freeing as much memory as possible
    edx <- acast(edx, userId ~ movieId, value.var = "rating")
    edx <- as(edx, "realRatingMatrix")
-   gc(verbose = FALSE) # Freeing memory
+   gc(verbose = FALSE)     # Freeing memory
    validation <- acast(validation, userId ~ movieId, value.var = "rating")
    validation <- as(validation, "realRatingMatrix")  
-   gc(verbose = FALSE) # Freeing memory
+   gc(verbose = FALSE)     # Freeing memory
 
 #Réduction taille pour benchmarks
 N <- nrow(edx)*0.3
@@ -146,33 +147,27 @@ time.matrix
 start.time <- Sys.time()
 
 recommend <- Recommender(edx, "POPULAR")
-##recommend <- Recommender(Training_set, "UBCF")
 #recom <- Recommender(getData(e, "train"), "UBCF")
 #UBCF, IBCF, POPULAR, RANDOM, ALS, ALS_implicit, SVD, SVDF
 
 predictions <- predict(recommend, validation, type = "ratingMatrix")
-##predictions <- predict(recommend, Prevalidation_set, type = "ratingMatrix")
 #predictions <- predict(recom, getData(e,"known"), type = "ratings")
 
 Accuracy <- calcPredictionAccuracy(validation,predictions)
-##Accuracy <- calcPredictionAccuracy(Prevalidation_set,predictions)
+#Accuracy <- calcPredictionAccuracy(predi,getData(e, "unknown"))
 gc(verbose = FALSE)
 
 # Freeing memory
 rm(predictions)
 gc(verbose = FALSE)
 
-#Accuracy <- calcPredictionAccuracy(predi,getData(e, "unknown"))
 Accuracy["RMSE"]/2
-
-# CHRONO
+### CHRONO
 end.time <- Sys.time()
 time.pred <- end.time - start.time
 time.matrix
 time.pred
-time.acc
-#rm(end.time, start.time)
-# Chrono A ENLEVER
+### Chrono A ENLEVER
 
 
 #save.image(file = "EKR-MovieLens.RData")
