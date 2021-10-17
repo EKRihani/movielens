@@ -12,41 +12,39 @@ library(tidyverse)
 library(caret)
 library(data.table)
 
-#Chrono A ENLEVER
-#start.time <- Sys.time()
-
 # MovieLens 10M dataset:
 # https://grouplens.org/datasets/movielens/10m/
 # http://files.grouplens.org/datasets/movielens/ml-10m.zip
 
 dl <- tempfile()
-#download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl) # Download Remote File
+#download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl) # FICHIER A DISTANCE
 
-dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
-ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
-                 col.names = c("userId", "movieId", "rating", "timestamp"))
-movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+#dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
+#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+#                 col.names = c("userId", "movieId", "rating", "timestamp"))
+#movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
 ##### DEBUT A ENLEVER ####
-#dl <- "~/projects/movielens/ml-20m.zip"   # /!\ GROS dataset
-#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-20m/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-20m/movies.csv")), "\\::", 3)
-
 #dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
 #ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
 #movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
+
+dl <- "~/projects/movielens/ml-latest-small.zip"   # /!\ MICRO dataset
+ratings <- fread(text = gsub(",", "\t", readLines(unzip(dl, "ml-latest-small/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+movies <- str_split_fixed(readLines(unzip(dl, "ml-latest-small/movies.csv")), "\\,", 3)
 ##### FIN A ENLEVER ####
 
 colnames(movies) <- c("movieId", "title", "genres")
 
 # if using R 3.6 or earlier:
-movies <- as.data.frame(movies) %>% mutate(movieId = as.numeric(levels(movieId))[movieId],
-                                           title = as.character(title),
-                                           genres = as.character(genres))
+#movies <- as.data.frame(movies) %>% mutate(movieId = as.numeric(levels(movieId))[movieId],
+#                                           title = as.character(title),
+#                                           genres = as.character(genres))
 # if using R 4.0 or later:
 movies <- as.data.frame(movies) %>% mutate(movieId = as.numeric(movieId),
                                            title = as.character(title),
                                            genres = as.character(genres))
+
 
 movielens <- left_join(ratings, movies, by = "movieId")
 
@@ -65,30 +63,21 @@ validation <- temp %>%
 removed <- anti_join(temp, validation)
 edx <- rbind(edx, removed)
 
-rm(dl, ratings, movies, test_index, temp, movielens, removed)
+#rm(dl, ratings, movies, test_index, temp, movielens, removed)
 
 ##########################################################
 # Begin ANALYSIS
 ##########################################################
 
-# Chrono A ENLEVER
-#end.time <- Sys.time()
-#time.taken <- end.time - start.time
-#time.taken
-#rm(end.time, time.taken, start.time)
-# Chrono A ENLEVER
-
 ## Libraries
-   # Checking/installing required packages/libraries
-   #if(!require(dplyr)) install.packages("dplyr", repos = "http://cran.us.r-project.org")
-   if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
-   if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
-   if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
-   # Loading required packages/libraries
-   #library(dplyr)
-   library(reshape2)     # For acast function
-   library(ggplot2)     # For pretty graphics
-   library(recommenderlab)     # For data analysis
+# Checking/installing required packages/libraries
+if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
+# Loading required packages/libraries
+library(reshape2)     # For acast function
+library(ggplot2)     # For pretty graphics
+library(recommenderlab)     # For data analysis
 
 
 ## Basic data to introduce the global dataset (training + validation)
@@ -97,19 +86,48 @@ total_number_movies <- n_distinct(union(edx$movieId, validation$movieId))
 total_number_users <-n_distinct(union(edx$userId, validation$userId))
 column_names <- colnames(edx)
 
-## Preparing data for recommenderlab. This step can take a LONG time !
-start.time <- Sys.time()
+## Preparing data for recommenderlab. /!\ This step can take 25+ minutes. /!\
+   # Remove data that won't be used in this study
+   validation <- validation %>% select(userId,movieId,rating)
+   edx <- edx %>% select(userId,movieId,rating)
+
+   # Detecting missing movies in the validation set, filling them with empty (NA) user/rating
+   MissingVal <- anti_join(edx, validation, by = "movieId")
+   MissingVal <- MissingVal %>% group_by(movieId) %>% slice(1)
+   MissingVal$userId <- NA
+   MissingVal$rating <- NA
+   # Integrating these empty rows after the validation set
+   validation <- rbind(validation, MissingVal)
+
+#start.time <- Sys.time()
+
+   # 10-star scale + integer conversion
+   edx$rating <- edx$rating*2
+   edx$rating <- as.integer(edx$rating)
+   edx$movieId <- as.integer(edx$movieId)
+   edx$userId <- as.integer(edx$userId)
+   validation$rating <- validation$rating*2
+   validation$rating <- as.integer(validation$rating)
+   validation$movieId <- as.integer(validation$movieId)
+   validation$userId <- as.integer(validation$userId)   
+   
    # Raising R memory limit size (otherwise won't be able to allocate vector of size 5+Gb...)
-   memory.limit(size = 30000)
-   # Converting edx and validation sets to a matrix, then a realRatingMatrix (used by recommanderlab)
+   memory.limit(size = 50000)
+   # Converting edx and validation sets to a matrix, then a realRatingMatrix (used by recommenderlab)
    edx <- acast(edx, userId ~ movieId, value.var = "rating")
    edx <- as(edx, "realRatingMatrix")
    validation <- acast(validation, userId ~ movieId, value.var = "rating")
    validation <- as(validation, "realRatingMatrix")   
-   ##Prevalidation_set <- EDX[5401:6040]
-   ##Training_set <- EDX[1:5401]
-time.taken <- end.time - start.time
-time.taken
+
+#ceil1 <- 0.9*nrow(edx)
+#floor2 <- 0.9*nrow(edx)+1
+#ceil2 <- nrow(edx)
+#Training_set <- edx[1:ceil1]
+#Prevalidation_set <- edx[floor2:ceil2]
+
+#end.time <- Sys.time()
+#time.matrix <- end.time - start.time
+#time.matrix
 
 #hist(getRatings(train))
 
@@ -123,24 +141,29 @@ time.taken
 #CHRONO
 #start.time <- Sys.time()
 
+recommend <- Recommender(edx, "SVD")
 ##recommend <- Recommender(Training_set, "POPULAR")
 #recom <- Recommender(getData(e, "train"), "UBCF")
 #UBCF, IBCF, POPULAR, RANDOM, ALS, ALS_implicit, SVD, SVDF
 
+predictions <- predict(recommend, validation, type = "ratingMatrix")
 ##predictions <- predict(recommend, Prevalidation_set, type = "ratingMatrix")
 #predictions <- predict(recom, getData(e,"known"), type = "ratings")
 
-##calcPredictionAccuracy(Prevalidation_set,predictions)
+Accuracy <- calcPredictionAccuracy(validation,predictions)
+##Accuracy <- calcPredictionAccuracy(Prevalidation_set,predictions)
+rm(predictions)
 #Accuracy <- calcPredictionAccuracy(predi,getData(e, "unknown"))
-#Accuracy["RMSE"]
+Accuracy["RMSE"]/2
 #RMSE(predi,getData(e, "unknown"))
 
 # CHRONO
 #end.time <- Sys.time()
-#time.taken <- end.time - start.time
-#time.taken
-#rm(end.time, time.taken, start.time)
+#time.pred <- end.time - start.time
+#time.pred
+#rm(end.time, start.time)
 # Chrono A ENLEVER
+
 
 #save.image(file = "EKR-MovieLens.RData")
 
