@@ -4,8 +4,9 @@
 
 ######### MULTITHREAD LIBRARY (needs OpenBLAS)
 library(RhpcBLASctl)
-Nthreads <- blas_get_num_procs()
-blas_set_num_threads(Nthreads)
+Ncores <- get_num_procs()
+blas_set_num_threads(Ncores)
+omp_set_num_threads(Ncores)
 ###########################
 
 
@@ -81,31 +82,33 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
 if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
 if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
+#if(!require(dplyr)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
 # Loading required packages/libraries
 library(reshape2)     # For acast function
 library(ggplot2)     # For pretty graphics
 library(recommenderlab)     # For data analysis
-
+#library(dplyr)       # For union
 
 ## Basic data to introduce the global dataset (training + validation)
-total_number_ratings <- nrow(union(edx,validation)) #NE MARCHE PLUS ?????
-total_number_movies <- n_distinct(union(edx$movieId, validation$movieId))
-total_number_users <-n_distinct(union(edx$userId, validation$userId))
-column_names <- colnames(edx)
-
+total_dataset <- full_join(edx,validation)
+total_number_ratings <- nrow(total_dataset)
+total_number_movies <- n_distinct(total_dataset$movieId)
+total_number_users <- n_distinct(total_dataset$userId)
+column_names <- colnames(total_dataset)
+rm(total_dataset)
 
 ## Preparing datasets : removing all data that won't be used
    # Detecting training set moviesId that are not useful (not in the validation set)
    MissingVal <- anti_join(edx, validation, by = "movieId")
    MissingVal <- MissingVal %>% select(movieId) %>% group_by(movieId) %>% slice(1)
-   # Deleting these useless lines in the training set
+   # Deleting these useless lines in the training set (more efficient than adding empty lines in the validation set)
    edx <- anti_join(edx, MissingVal, by = "movieId")
 
 # CHRONO
 start.time <- Sys.time()
 
 ## Preparing datasets : adapting training and validation sets to recommenderlab
-   # 10-star scale + integer conversion (improves performance)
+   # 10-star scale + integer conversion (uses less RAM, less swapping : vastly improves performance)
    edx$rating <- edx$rating*2
    edx$rating <- as.integer(edx$rating)
    edx$movieId <- as.integer(edx$movieId)
@@ -126,7 +129,7 @@ start.time <- Sys.time()
    validation <- as(validation, "realRatingMatrix")  
    gc(verbose = FALSE)     # Freeing memory
 
-#Réduction taille pour benchmarks
+# Réduction taille pour benchmarks
 N <- nrow(edx)*0.3
 edx <- edx[1:N]
 validation <- validation[1:N]
