@@ -19,19 +19,19 @@ library(data.table)
 dl <- tempfile()
 #download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl) # FICHIER A DISTANCE
 
-#dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
-#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
-#                 col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
+ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+                 col.names = c("userId", "movieId", "rating", "timestamp"))
+movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
 ##### DEBUT A ENLEVER ####
 #dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
 #ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
 #movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
 
-dl <- "~/projects/movielens/ml-latest-small.zip"   # /!\ MICRO dataset
-ratings <- fread(text = gsub(",", "\t", readLines(unzip(dl, "ml-latest-small/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-movies <- str_split_fixed(readLines(unzip(dl, "ml-latest-small/movies.csv")), "\\,", 3)
+#dl <- "~/projects/movielens/ml-latest-small.zip"   # /!\ MICRO dataset
+#ratings <- fread(text = gsub(",", "\t", readLines(unzip(dl, "ml-latest-small/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+#movies <- str_split_fixed(readLines(unzip(dl, "ml-latest-small/movies.csv")), "\\,", 3)
 ##### FIN A ENLEVER ####
 
 colnames(movies) <- c("movieId", "title", "genres")
@@ -63,7 +63,7 @@ validation <- temp %>%
 removed <- anti_join(temp, validation)
 edx <- rbind(edx, removed)
 
-#rm(dl, ratings, movies, test_index, temp, movielens, removed)
+rm(dl, ratings, movies, test_index, temp, movielens, removed)
 
 ##########################################################
 # Begin ANALYSIS
@@ -86,22 +86,25 @@ total_number_movies <- n_distinct(union(edx$movieId, validation$movieId))
 total_number_users <-n_distinct(union(edx$userId, validation$userId))
 column_names <- colnames(edx)
 
-## Preparing data for recommenderlab. /!\ This step can take 25+ minutes. /!\
-   # Remove data that won't be used in this study
-   validation <- validation %>% select(userId,movieId,rating)
-   edx <- edx %>% select(userId,movieId,rating)
-
-   # Detecting missing movies in the validation set, filling them with empty (NA) user/rating
+## Preparing datasets : removing all data that won't be used
+   # Detecting training set moviesId that are not useful (not in the validation set)
    MissingVal <- anti_join(edx, validation, by = "movieId")
-   MissingVal <- MissingVal %>% group_by(movieId) %>% slice(1)
-   MissingVal$userId <- NA
-   MissingVal$rating <- NA
-   # Integrating these empty rows after the validation set
-   validation <- rbind(validation, MissingVal)
+   MissingVal <- MissingVal %>% select(movieId) %>% group_by(movieId) %>% slice(1)
+   # Deleting these useless lines in the training set
+#   edx <- anti_join(edx, MissingVal, by = "movieId")
 
-#start.time <- Sys.time()
+   # Alternative : add missing movies rows in the validation set, with empty (NAs) columns, but calculations would be MUCH slower
+   MissingVal$genres <- NA
+   MissingVal$timestamp <- NA
+   MissingVal$title <- NA
+  MissingVal$userId <- NA
+  MissingVal$rating <- NA
+  validation <- rbind(validation, MissingVal)
 
-   # 10-star scale + integer conversion
+start.time <- Sys.time()
+
+## Preparing datasets : adapting training and validation sets to recommenderlab
+   # 10-star scale + integer conversion (improves performance)
    edx$rating <- edx$rating*2
    edx$rating <- as.integer(edx$rating)
    edx$movieId <- as.integer(edx$movieId)
@@ -110,25 +113,26 @@ column_names <- colnames(edx)
    validation$rating <- as.integer(validation$rating)
    validation$movieId <- as.integer(validation$movieId)
    validation$userId <- as.integer(validation$userId)   
-   
+
    # Raising R memory limit size (otherwise won't be able to allocate vector of size 5+Gb...)
    memory.limit(size = 50000)
-   # Converting edx and validation sets to a matrix, then a realRatingMatrix (used by recommenderlab)
+   # Converting edx and validation sets to a matrix, then a realRatingMatrix (class used by recommenderlab)
+   gc(verbose = FALSE) # Freeing as much memory as possible
    edx <- acast(edx, userId ~ movieId, value.var = "rating")
    edx <- as(edx, "realRatingMatrix")
+   gc(verbose = FALSE) # Freeing memory
    validation <- acast(validation, userId ~ movieId, value.var = "rating")
-   validation <- as(validation, "realRatingMatrix")   
+   validation <- as(validation, "realRatingMatrix")  
+   gc(verbose = FALSE) # Freeing memory
 
-#ceil1 <- 0.9*nrow(edx)
-#floor2 <- 0.9*nrow(edx)+1
-#ceil2 <- nrow(edx)
-#Training_set <- edx[1:ceil1]
-#Prevalidation_set <- edx[floor2:ceil2]
+#Réduction taille pour benchmarks
+N <- nrow(edx)*0.3
+edx <- edx[1:N]
+validation <- validation[1:N]
 
-#end.time <- Sys.time()
-#time.matrix <- end.time - start.time
-#time.matrix
-
+end.time <- Sys.time()
+time.matrix <- end.time - start.time
+time.matrix
 #hist(getRatings(train))
 
 # Normalized distribution of ratings
@@ -139,10 +143,10 @@ column_names <- colnames(edx)
 #hist(colMeans(train))
 
 #CHRONO
-#start.time <- Sys.time()
+start.time <- Sys.time()
 
-recommend <- Recommender(edx, "SVD")
-##recommend <- Recommender(Training_set, "POPULAR")
+recommend <- Recommender(edx, "POPULAR")
+##recommend <- Recommender(Training_set, "UBCF")
 #recom <- Recommender(getData(e, "train"), "UBCF")
 #UBCF, IBCF, POPULAR, RANDOM, ALS, ALS_implicit, SVD, SVDF
 
@@ -152,15 +156,21 @@ predictions <- predict(recommend, validation, type = "ratingMatrix")
 
 Accuracy <- calcPredictionAccuracy(validation,predictions)
 ##Accuracy <- calcPredictionAccuracy(Prevalidation_set,predictions)
+gc(verbose = FALSE)
+
+# Freeing memory
 rm(predictions)
+gc(verbose = FALSE)
+
 #Accuracy <- calcPredictionAccuracy(predi,getData(e, "unknown"))
 Accuracy["RMSE"]/2
-#RMSE(predi,getData(e, "unknown"))
 
 # CHRONO
-#end.time <- Sys.time()
-#time.pred <- end.time - start.time
-#time.pred
+end.time <- Sys.time()
+time.pred <- end.time - start.time
+time.matrix
+time.pred
+time.acc
 #rm(end.time, start.time)
 # Chrono A ENLEVER
 
