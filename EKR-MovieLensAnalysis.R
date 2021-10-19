@@ -166,20 +166,32 @@ UBCF.MM <- 0
 UBCF.MP <- 0
 #recommend <- Recommender(data= edx, method= "UBCF", 
 #   param= list(method = UBCF.M, nn = UBCF.N, sample = UBCF.S, weighted = UBCF.W, normalize= UBCF.N, min_matching_items= UBCF.MM, min_predictive_items = UBCF.MP))
-recommend <- Recommender( edx,"UBCF")
+#recommend <- Recommender( edx,"UBCF")
+
+##### ALS System #####
+ALS.L <- 0.001  # 0.1 par défaut (meilleur RMSE < 0.02)
+ALS.F <- 50  # 10 par défaut (+ précision)
+ALS.I <- 10  # 10 par défaut (++ temps, + précision)
+ALS.M <- 1
+#recommend <- Recommender(data= edx, method= "ALS", 
+#   param= list(lambda = ALS.L, n_factors = ALS.F, n_iterations = ALS.I, min_item_nr = ALS.M))
 
 ######CHRONO#####
 start.time <- Sys.time()
 
-ALS.N <- NULL
-ALS.L <- 0.001  # 0.1 par défaut (meilleur RMSE < 0.02)
-ALS.F <- 10  # 10 par défaut (+ précision)
-ALS.I <- 5  # 10 par défaut (++ temps, + précision)
-ALS.M <- 1
-#recommend <- Recommender(data= edx, method= "ALS", 
-#   param= list(normalize = ALS.N, lambda = ALS.L, n_factors = ALS.F, n_iterations = ALS.I, min_item_nr = ALS.M))
-
-
+##### SVDF System #####
+SVDF.K <- 2  #10 par défaut
+SVDF.G <- 0.015  #0,015 par défaut
+SVDF.L <- 0.001  #0,001 par défaut (meilleur RMSE 0,01)
+SVDF.minE <- 50  #50 par défaut
+SVDF.MaxE <- 200 #200 par défaut (++temps, + précision)
+SVDF.I <- 0.000001
+SVDF.N <- "center"
+SVDF.V <- FALSE
+recommend <- Recommender(data=edx, method= "SVDF", 
+   param= list(k=SVDF.K, gamma=SVDF.G, lambda=SVDF.L, min_epochs=SVDF.minE, max_epochs=SVDF.MaxE, min_improvement=SVDF.I, normalize=SVDF.N, verbose=SVDF.V))
+   
+   
 #UBCF, IBCF, POPULAR, RANDOM, ALS, ALS_implicit, SVD, SVDF
 
 predictions <- predict(recommend, validation, type = "ratingMatrix")
