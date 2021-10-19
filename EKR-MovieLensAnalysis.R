@@ -19,19 +19,19 @@ library(data.table)
 dl <- tempfile()
 #download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl) # FICHIER A DISTANCE
 
-dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
-ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
-                 col.names = c("userId", "movieId", "rating", "timestamp"))
-movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+#dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
+#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+#                 col.names = c("userId", "movieId", "rating", "timestamp"))
+#movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
 ##### DEBUT A ENLEVER ####
 #dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
 #ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
 #movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
 
-#dl <- "~/projects/movielens/ml-latest-small.zip"   # /!\ MICRO dataset
-#ratings <- fread(text = gsub(",", "\t", readLines(unzip(dl, "ml-latest-small/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-latest-small/movies.csv")), "\\,", 3)
+dl <- "~/projects/movielens/ml-latest-small.zip"   # /!\ MICRO dataset
+ratings <- fread(text = gsub(",", "\t", readLines(unzip(dl, "ml-latest-small/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+movies <- str_split_fixed(readLines(unzip(dl, "ml-latest-small/movies.csv")), "\\,", 3)
 ##### FIN A ENLEVER ####
 
 colnames(movies) <- c("movieId", "title", "genres")
@@ -106,17 +106,18 @@ start.time <- Sys.time()
 
 ## Preparing datasets : adapting training and validation sets to recommenderlab
    # 10-star scale + integer conversion (uses less RAM = less swapping = improves performance)
-   edx$rating <- edx$rating*2
-   edx$rating <- as.integer(edx$rating)
-   edx$movieId <- as.integer(edx$movieId)
-   edx$userId <- as.integer(edx$userId)
-   validation$rating <- validation$rating*2
-   validation$rating <- as.integer(validation$rating)
-   validation$movieId <- as.integer(validation$movieId)
-   validation$userId <- as.integer(validation$userId)   
+#   edx$rating <- edx$rating*2
+#   edx$rating <- as.integer(edx$rating)
+#   edx$movieId <- as.integer(edx$movieId)
+#   edx$userId <- as.integer(edx$userId)
+#   validation$rating <- validation$rating*2
+#   validation$rating <- as.integer(validation$rating)
+#   validation$movieId <- as.integer(validation$movieId)
+#   validation$userId <- as.integer(validation$userId)   
 
    # Raising R memory limit size (otherwise won't be able to allocate vector of size 5+Gb...)
-   memory.limit(size = 50000)
+   memory.limit(size = 50000) # For Windows. Unix-based systems have system-based memory management.
+   
    # Converting edx and validation sets to a matrix, then a realRatingMatrix (class used by recommenderlab)
    gc(verbose = FALSE)     # Freeing as much memory as possible
    edx <- acast(edx, userId ~ movieId, value.var = "rating")
@@ -126,15 +127,12 @@ start.time <- Sys.time()
    validation <- as(validation, "realRatingMatrix")  
    gc(verbose = FALSE)     # Freeing memory
 
-#### Réduction taille pour benchmarks #####
-N <- nrow(edx)*0.3
-edx <- edx[1:N]
-validation <- validation[1:N]
+#save(edx, validation, file = "EdxVal.RData")
+#load("EdxVal.RData")
 
-##### CHRONO #####
+   ##### CHRONO #####
 end.time <- Sys.time()
 time.matrix <- end.time - start.time
-time.matrix
 #####################
 
 #hist(getRatings(train))
@@ -145,32 +143,58 @@ time.matrix
 # Mean rating for each movie
 #hist(colMeans(train))
 
+##### SVD System #####
+SVD.K <- 200 # Défaut = 10 (meilleur RMSE >= 500)
+SVD.M <- 100 # Défaut = 100 (pas d'effet???)
+SVD.N <- "Z-score" # center, Z-Score (pas d'effet???)
+#recommend <- Recommender(data= edx, method= "SVD", 
+#   param= list(k = SVD.K, maxiter = SVD.M, normalize = SVD.N))
+
+##### POPULAR System #####
+POP.N <- "Z-score" # center, Z-Score (Z plus rapide ?)
+#recommend <- Recommender(data= edx, method= "POPULAR", 
+#   param= list(normalize = POP.N))
+
+
+##### UBCF System ##### ????? NE MARCHE PAS ?????
+UBCF.M <- "cosine"
+UBCF.N <- 10
+UBCF.S <- FALSE
+UBCF.W <- TRUE
+UBCF.N <- "center"
+UBCF.MM <- 0
+UBCF.MP <- 0
+#recommend <- Recommender(data= edx, method= "UBCF", 
+#   param= list(method = UBCF.M, nn = UBCF.N, sample = UBCF.S, weighted = UBCF.W, normalize= UBCF.N, min_matching_items= UBCF.MM, min_predictive_items = UBCF.MP))
+recommend <- Recommender( edx,"UBCF")
+
 ######CHRONO#####
 start.time <- Sys.time()
 
-recommend <- Recommender(edx, "POPULAR")
-#recom <- Recommender(getData(e, "train"), "UBCF")
+ALS.N <- NULL
+ALS.L <- 0.001  # 0.1 par défaut (meilleur RMSE < 0.02)
+ALS.F <- 10  # 10 par défaut (+ précision)
+ALS.I <- 5  # 10 par défaut (++ temps, + précision)
+ALS.M <- 1
+#recommend <- Recommender(data= edx, method= "ALS", 
+#   param= list(normalize = ALS.N, lambda = ALS.L, n_factors = ALS.F, n_iterations = ALS.I, min_item_nr = ALS.M))
+
+
 #UBCF, IBCF, POPULAR, RANDOM, ALS, ALS_implicit, SVD, SVDF
 
 predictions <- predict(recommend, validation, type = "ratingMatrix")
-#predictions <- predict(recom, getData(e,"known"), type = "ratings")
-
 Accuracy <- calcPredictionAccuracy(validation,predictions)
-#Accuracy <- calcPredictionAccuracy(predi,getData(e, "unknown"))
 gc(verbose = FALSE)
 
-# Freeing memory
-rm(predictions)
+rm(predictions)  # Freeing memory
 gc(verbose = FALSE)
 
-Accuracy["RMSE"]/2
-
-##### CHRON O#####
+##### CHRONO#####
 end.time <- Sys.time()
 time.pred <- end.time - start.time
 time.matrix
 time.pred
 ##########################"
-
+Accuracy["RMSE"]
 save.image(file = "EKR-MovieLens.RData")
 
