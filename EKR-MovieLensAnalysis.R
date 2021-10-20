@@ -105,23 +105,23 @@ rm(total_dataset)
    # Save the edx and validation datasets to an external file (will be used later for our validation set final preparation)
    save(edx,validation, file = "EdxVal.RData")
 
-##### Suppression valeurs inutilisées #####
-#MissingVal <- anti_join(edx, validation, by = "movieId")
-#MissingVal <- MissingVal %>% select(movieId) %>% group_by(movieId) %>% slice(1)
-#edx <- anti_join(edx, MissingVal, by = "movieId")
+##### Suppression valeurs inutilisées = GAIN PERFS #####
+MissingVal <- anti_join(edx, validation, by = "movieId")
+MissingVal <- MissingVal %>% select(movieId) %>% group_by(movieId) %>% slice(1)
+edx <- anti_join(edx, MissingVal, by = "movieId")
 ###########################################
 
 
    # Convert training set to a matrix, then a realRatingMatrix (class used by recommenderlab)
    gc(verbose = FALSE)     # Free as much memory as possible
    Edx <- acast(edx, userId ~ movieId, value.var = "rating")
-   Edx <- as(edx, "realRatingMatrix")
+   Edx <- as(edx, "realRatingMatrix")  #realRatingMatrix ?
    gc(verbose = FALSE)     # Free memory
 
 
 ## Prepare the validation dataset for RMSE computation
    # Load edx and validation datasets
-  load("EdxVal.RData")    ###
+#  load("EdxVal.RData")    ###
   # 10-star scale + integer conversion (uses less RAM = less swapping = improves performance)
   validation$rating <- validation$rating*2
   validation$rating <- as.integer(validation$rating)
@@ -130,23 +130,22 @@ rm(total_dataset)
    # Remove data that weren't used in this study
    validation <- validation %>% select(userId,movieId,rating)
    edx <- edx %>% select(userId,movieId,rating)
-   # Detect missing movies in the validation set (present in the training but not in the validation set)
+   # Detect missing movies in the validation set (present in the training but not in the validation set), keeping 1 movieId for each
    MissingVal <- anti_join(edx, validation, by = "movieId")
    MissingVal <- MissingVal %>% group_by(movieId) %>% slice(1)
    # Fill these missing lines with empty (NA) ratings
-   MissingVal$userId <- NA   ###
-   MissingVal$rating <- NA   ###
-   MissingVal <- as.data.frame(MissingVal)
+#   MissingVal$userId <- NA   ###
+#   MissingVal$rating <- NA   ###
+#   MissingVal <- as.data.frame(MissingVal)  ###
    # Integrate empty rows after the validation set
-   validation <- rbind(validation, MissingVal)    ###
+#   validation <- rbind(validation, MissingVal)    ###
 
-
-   
-   # Converts validation set to matrix, then realRatingMatrix (class used by recommenderlab)
-  rm(edx)     # Free memory (recommenderlab will be using the "Edx" realRatingMatrix, not the edx dataframe)
+   # Free memory before converting to matrix & realRatingMatrix
+   rm(edx)     # The "edx" dataframe won't be used anymore ; Recommenderlab uses the "Edx" realRatingMatrix
    gc(verbose = FALSE)     # Free memory
+      # Convert validation set to matrix, then realRatingMatrix (class used by recommenderlab)
    validation <- acast(validation, userId ~ movieId, value.var = "rating")
-   validation <- as(validation, "realRatingMatrix")  
+   validation <- as(validation, "realRatingMatrix")
    gc(verbose = FALSE)     # Free memory
 
 ###### Enregistrement SETS #####
@@ -170,34 +169,35 @@ save(Edx, validation, file = "EdxVal.RData")
 SVD.K <- 200 # Défaut = 10 (meilleur RMSE >= 500)
 SVD.M <- 100 # Défaut = 100 (pas d'effet???)
 SVD.N <- "Z-score" # center, Z-Score (pas d'effet???)
-#recommend <- Recommender(data= Edx, method= "SVD", 
-#   param= list(k = SVD.K, maxiter = SVD.M, normalize = SVD.N))
+#recommend <- Recommender(data=Edx, method="SVD", param=list(k=SVD.K, maxiter=SVD.M, normalize=SVD.N))
 
 ##### POPULAR System #####
 POP.N <- "Z-score" # center, Z-Score (Z plus rapide ?)
-recommend <- Recommender(data= Edx, method= "POPULAR", 
-   param= list(normalize = POP.N))
-
+#recommend <- Recommender(data=Edx, method="POPULAR", param=list(normalize=POP.N))
 
 ##### UBCF System ##### ????? NE MARCHE PAS ?????
 UBCF.M <- "cosine"
-UBCF.N <- 10
+UBCF.N <- 25
 UBCF.S <- FALSE
 UBCF.W <- TRUE
 UBCF.N <- "center"
 UBCF.MM <- 0
 UBCF.MP <- 0
-#recommend <- Recommender(data= edx, method= "UBCF", 
-#   param= list(method = UBCF.M, nn = UBCF.N, sample = UBCF.S, weighted = UBCF.W, normalize= UBCF.N, min_matching_items= UBCF.MM, min_predictive_items = UBCF.MP))
-#recommend <- Recommender( Edx,"UBCF")
+#recommend <- Recommender(data=Edx, method="UBCF", param=list(method=UBCF.M, nn=UBCF.N, sample=UBCF.S, weighted=UBCF.W, normalize=UBCF.N, min_matching_items=UBCF.MM, min_predictive_items=UBCF.MP))
+
+##### LIBMF System #####
+LIBMF.D <- 100  # 10 par défaut (+++ précision)
+LIBMF.P <- 0.01   # 0.01 par défaut
+LIBMF.Q <- 0.01  #0.01 par défaut
+LIBMF.T <- 16   # 1 par défaut
+recommend <- Recommender(data=Edx,method="LIBMF", param=list(dim=LIBMF.D,costp_l2=LIBMF.P, costq_l2=LIBMF.Q,  nthread=LIBMF.T))
 
 ##### ALS System #####
 ALS.L <- 0.001  # 0.1 par défaut (meilleur RMSE < 0.02)
 ALS.F <- 50  # 10 par défaut (+ précision)
 ALS.I <- 10  # 10 par défaut (++ temps, + précision)
 ALS.M <- 1
-#recommend <- Recommender(data= Edx, method= "ALS", 
-#   param= list(lambda = ALS.L, n_factors = ALS.F, n_iterations = ALS.I, min_item_nr = ALS.M))
+#recommend <- Recommender(data=Edx, method="ALS", param=list(lambda=ALS.L, n_factors=ALS.F, n_iterations=ALS.I, min_item_nr=ALS.M))
 
 ######CHRONO#####
 start.time <- Sys.time()
@@ -215,7 +215,7 @@ SVDF.V <- FALSE
 #   param= list(k=SVDF.K, gamma=SVDF.G, lambda=SVDF.L, min_epochs=SVDF.minE, max_epochs=SVDF.MaxE, min_improvement=SVDF.I, normalize=SVDF.N, verbose=SVDF.V))
 
 
-predictions <- predict(recommend, validation, type = "ratingMatrix")
+predictions <- predict(recommend, validation, type = "ratingMatrix") #type = realRatingMatrix ?
 Accuracy <- calcPredictionAccuracy(validation,predictions)
 gc(verbose = FALSE)
 
@@ -225,10 +225,9 @@ gc(verbose = FALSE)
 ##### CHRONO#####
 end.time <- Sys.time()
 time.pred <- end.time - start.time
-time.matrix
 time.pred
 ##########################"
-Accuracy["RMSE"]
+Accuracy["RMSE"]/2
 
 save.image(file = "EKR-MovieLens.RData")
 
