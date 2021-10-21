@@ -25,13 +25,13 @@ dl <- tempfile()
 #movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
 ##### DEBUT A ENLEVER ####
-#dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
-#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
+dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
+ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
 
-dl <- "~/projects/movielens/ml-latest-small.zip"   # /!\ MICRO dataset
-ratings <- fread(text = gsub(",", "\t", readLines(unzip(dl, "ml-latest-small/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-movies <- str_split_fixed(readLines(unzip(dl, "ml-latest-small/movies.csv")), "\\,", 3)
+#dl <- "~/projects/movielens/ml-latest-small.zip"   # /!\ MICRO dataset
+#ratings <- fread(text = gsub(",", "\t", readLines(unzip(dl, "ml-latest-small/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+#movies <- str_split_fixed(readLines(unzip(dl, "ml-latest-small/movies.csv")), "\\,", 3)
 ##### FIN A ENLEVER ####
 
 colnames(movies) <- c("movieId", "title", "genres")
@@ -65,9 +65,11 @@ edx <- rbind(edx, removed)
 
 rm(dl, ratings, movies, test_index, temp, movielens, removed)
 
-######################
-#   Begin ANALYSIS   #
-######################
+#################################################################
+
+##########################
+#   BEGINNING ANALYSIS   #
+##########################
 
 ######### MULTITHREAD LIBRARY (needs OpenBLAS)
 library(RhpcBLASctl)
@@ -82,10 +84,10 @@ omp_set_num_threads(Ncores)
    if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
    if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
    # Load required packages/libraries
-   library(reshape2)     # For acast function
-   library(ggplot2)     # For pretty graphics
-   library(recommenderlab)     # For data analysis
-   # Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb...
+   library(reshape2)       # For acast function
+   library(ggplot2)        # For pretty graphics
+   library(recommenderlab) # For data analysis
+   # Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during our Matrix/realRatingMatrix conversion...
    memory.limit(size = 50000)
 
 ## Basic data to introduce the whole dataset (training + validation)
@@ -94,7 +96,7 @@ total_number_ratings <- nrow(total_dataset)
 total_number_movies <- n_distinct(total_dataset$movieId)
 total_number_users <- n_distinct(total_dataset$userId)
 column_names <- colnames(total_dataset)
-rm(total_dataset)
+rm(total_dataset)    # Free some memory
 
 ## Prepare training dataset : adapt the "edx" set for a recommenderlab analysis
    # 10-star scale + integer conversion (uses less RAM = less swapping = improved performance)
@@ -103,25 +105,51 @@ rm(total_dataset)
    edx$movieId <- as.integer(edx$movieId)
    edx$userId <- as.integer(edx$userId)
    # Save the edx and validation datasets to an external file (will be used later for our validation set final preparation)
-   save(edx,validation, file = "EdxVal.RData")
+   save(edx,validation, file = "edxval.RData")
 
 ##### Suppression valeurs inutilisées = GAIN PERFS #####
-MissingVal <- anti_join(edx, validation, by = "movieId")
-MissingVal <- MissingVal %>% select(movieId) %>% group_by(movieId) %>% slice(1)
-edx <- anti_join(edx, MissingVal, by = "movieId")
-###########################################
+missing_movieId <- anti_join(edx, validation, by = "movieId")
+missing_movieId <- missing_movieId %>% select(movieId) %>% group_by(movieId) %>% slice(1)
+edx <- anti_join(edx, missing_movieId, by = "movieId")
+################   A ENLEVER +++++   ##################
 
 
    # Convert training set to a matrix, then a realRatingMatrix (class used by recommenderlab)
    gc(verbose = FALSE)     # Free as much memory as possible
-   Edx <- acast(edx, userId ~ movieId, value.var = "rating")
-   Edx <- as(edx, "realRatingMatrix")  #realRatingMatrix ?
+   edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
+   edx_rrm <- as(edx, "realRatingMatrix")
    gc(verbose = FALSE)     # Free memory
 
+#######################################
+#    BENCHMARKING TRAINING METHODS    #
+#######################################
+   
+## Building the training and prevalidation sets, on a smaller dataset
+   # Reducing set size to 5% of the edx dataset
+   train_size <-0.05
+   index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm) * train_size, replace = FALSE)
+   small_edx_rrm <- edx_rrm[index]
+   # Building the training and evaluation sets with Recommenderlab
+   #EXEMPLE evaluationScheme(data, method = "split", train = 0.9, k = NULL, given, goodRating = NA)
+   evaluation <- evaluationScheme(data = small_edx_rrm, method = "split", train = 0.9, given = 1)
+   
+# Running the first benchmark, all methods, default parameters
+   list_methods <- c("RANDOM", "POPULAR", "IBCF", "UBCF", "SVD", "SVDF", "ALS", "ALS_implicit")
+
+######################################
+#    FINE-TUNING TRAINING METHODS    #
+######################################   
+
+##### Section à réinsérer ici #####
+
+
+#####################################################
+#    CALCULATING RMSE AGAINST THE VALIDATION SET    #
+#####################################################
 
 ## Prepare the validation dataset for RMSE computation
    # Load edx and validation datasets
-#  load("EdxVal.RData")    ###
+#  load("edxval.RData")    ### A remettre
   # 10-star scale + integer conversion (uses less RAM = less swapping = improves performance)
   validation$rating <- validation$rating*2
   validation$rating <- as.integer(validation$rating)
@@ -131,26 +159,27 @@ edx <- anti_join(edx, MissingVal, by = "movieId")
    validation <- validation %>% select(userId,movieId,rating)
    edx <- edx %>% select(userId,movieId,rating)
    # Detect missing movies in the validation set (present in the training but not in the validation set), keeping 1 movieId for each
-   MissingVal <- anti_join(edx, validation, by = "movieId")
-   MissingVal <- MissingVal %>% group_by(movieId) %>% slice(1)
+   missing_movieId <- anti_join(edx, validation, by = "movieId")
+   missing_movieId <- missing_movieId %>% group_by(movieId) %>% slice(1)
    # Fill these missing lines with empty (NA) ratings
-#   MissingVal$userId <- NA   ###
-#   MissingVal$rating <- NA   ###
-#   MissingVal <- as.data.frame(MissingVal)  ###
+#   missing_movieId$userId <- NA   ### A remettre
+#   missing_movieId$rating <- NA   ### A remettre
+#   missing_movieId <- as.data.frame(missing_movieId)  ### A remettre
    # Integrate empty rows after the validation set
-#   validation <- rbind(validation, MissingVal)    ###
+#   validation <- rbind(validation, missing_movieId)    ###  A remettre
 
    # Free memory before converting to matrix & realRatingMatrix
-   rm(edx)     # The "edx" dataframe won't be used anymore ; Recommenderlab uses the "Edx" realRatingMatrix
    gc(verbose = FALSE)     # Free memory
       # Convert validation set to matrix, then realRatingMatrix (class used by recommenderlab)
-   validation <- acast(validation, userId ~ movieId, value.var = "rating")
-   validation <- as(validation, "realRatingMatrix")
+   validation_rrm <- acast(validation, userId ~ movieId, value.var = "rating")
+   validation_rrm <- as(validation, "realRatingMatrix")
    gc(verbose = FALSE)     # Free memory
-
+   rm(edx, validation)     # edx/validation won't be used anymore ; keeping only edx_rrm/validation_rrm
+   
 ###### Enregistrement SETS #####
-save(Edx, validation, file = "EdxVal.RData")
-#load("EdxVal.RData")
+save(edx_rrm, validation_rrm, file = "edxval_rrm.RData")
+#load("edxval.RData")
+######## A ENLEVER +++++ ######
 
 #hist(getRatings(train))
 # Normalized distribution of ratings
@@ -160,22 +189,34 @@ save(Edx, validation, file = "EdxVal.RData")
 # Mean rating for each movie
 #hist(colMeans(train))
 
-##########################
-#    TRAINING METHODS    #
-##########################
-#UBCF, IBCF, POPULAR, RANDOM, ALS, ALS_implicit, SVD, SVDF
-   
+
+######################################
+#    FINE-TUNING TRAINING METHODS    #
+######################################
+
+##### RANDOM Method #####
+#recommend <- Recommender(data=edx_rrm, method="RANDOM")
+
 ##### SVD System #####
-SVD.K <- 200 # Défaut = 10 (meilleur RMSE >= 500)
+SVD.K <- 10 # Défaut = 10 (meilleur RMSE >= 500)
 SVD.M <- 100 # Défaut = 100 (pas d'effet???)
-SVD.N <- "Z-score" # center, Z-Score (pas d'effet???)
-#recommend <- Recommender(data=Edx, method="SVD", param=list(k=SVD.K, maxiter=SVD.M, normalize=SVD.N))
+SVD.N <- "center" # center, Z-Score (pas d'effet???)
+#recommend <- Recommender(data=edx_rrm, method="SVD", param=list(k=SVD.K, maxiter=SVD.M, normalize=SVD.N))
 
-##### POPULAR System #####
-POP.N <- "Z-score" # center, Z-Score (Z plus rapide ?)
-#recommend <- Recommender(data=Edx, method="POPULAR", param=list(normalize=POP.N))
+##### POPULAR Method #####
+POP.N <- "center" # center, Z-Score (Z plus rapide ?)
+#recommend <- Recommender(data=edx_rrm, method="POPULAR", param=list(normalize=POP.N))
 
-##### UBCF System ##### ????? NE MARCHE PAS ?????
+##### IBCF Method #####
+IBCF.K <- 30         # k (default = 30)
+IBCF.M <- "Cosine"   # Method (default = Cosine)
+IBCF.N <- "center"   # Normalize (default = center)
+IBCF.NSM <- FALSE    # Normalize Sim Matrix (default = FALSE)
+IBCF.A <-0.5         # Alpha (default = 0.5)
+IBCF.NAZ <- FALSE    #Na as Zero (default = FALSE)
+#recommend <- Recommender(data = edx_rrm, method = "IBCF", param = list(k=IBCF.K, method=IBCF.M, normalize=IBCF.N, normalize_sim_matrix=IBCF.NSM, alpha=IBCM.A, na_as_zero=IBCM.NAZ))
+
+##### UBCF Method ##### ????? NE MARCHE PAS ?????
 UBCF.M <- "cosine"
 UBCF.N <- 25
 UBCF.S <- FALSE
@@ -183,26 +224,24 @@ UBCF.W <- TRUE
 UBCF.N <- "center"
 UBCF.MM <- 0
 UBCF.MP <- 0
-#recommend <- Recommender(data=Edx, method="UBCF", param=list(method=UBCF.M, nn=UBCF.N, sample=UBCF.S, weighted=UBCF.W, normalize=UBCF.N, min_matching_items=UBCF.MM, min_predictive_items=UBCF.MP))
+#recommend <- Recommender(data=edx_rrm, method="UBCF", param=list(method=UBCF.M, nn=UBCF.N, sample=UBCF.S, weighted=UBCF.W, normalize=UBCF.N, min_matching_items=UBCF.MM, min_predictive_items=UBCF.MP))
 
-##### LIBMF System #####
+##### LIBMF Method #####
 LIBMF.D <- 100  # 10 par défaut (+++ précision)
 LIBMF.P <- 0.01   # 0.01 par défaut
 LIBMF.Q <- 0.01  #0.01 par défaut
 LIBMF.T <- 16   # 1 par défaut
-recommend <- Recommender(data=Edx,method="LIBMF", param=list(dim=LIBMF.D,costp_l2=LIBMF.P, costq_l2=LIBMF.Q,  nthread=LIBMF.T))
+#recommend <- Recommender(data=edx_rrm,method="LIBMF", param=list(dim=LIBMF.D,costp_l2=LIBMF.P, costq_l2=LIBMF.Q,  nthread=LIBMF.T))
+recommend <- Recommender(data=edx_rrm,method="LIBMF")
 
-##### ALS System #####
+##### ALS Method #####
 ALS.L <- 0.001  # 0.1 par défaut (meilleur RMSE < 0.02)
 ALS.F <- 50  # 10 par défaut (+ précision)
 ALS.I <- 10  # 10 par défaut (++ temps, + précision)
 ALS.M <- 1
-#recommend <- Recommender(data=Edx, method="ALS", param=list(lambda=ALS.L, n_factors=ALS.F, n_iterations=ALS.I, min_item_nr=ALS.M))
+#recommend <- Recommender(data=edx_rrm, method="ALS", param=list(lambda=ALS.L, n_factors=ALS.F, n_iterations=ALS.I, min_item_nr=ALS.M))
 
-######CHRONO#####
-start.time <- Sys.time()
-
-##### SVDF System #####
+##### SVDF Method #####
 SVDF.K <- 10  #10 par défaut
 SVDF.G <- 0.015  #0,015 par défaut
 SVDF.L <- 0.001  #0,001 par défaut (meilleur RMSE 0,01)
@@ -211,12 +250,12 @@ SVDF.MaxE <- 400 #200 par défaut (++temps, + précision)
 SVDF.I <- 0.000001
 SVDF.N <- "center"
 SVDF.V <- FALSE
-#recommend <- Recommender(data=Edx, method= "SVDF", 
-#   param= list(k=SVDF.K, gamma=SVDF.G, lambda=SVDF.L, min_epochs=SVDF.minE, max_epochs=SVDF.MaxE, min_improvement=SVDF.I, normalize=SVDF.N, verbose=SVDF.V))
+#recommend <- Recommender(data=edx_rrm, method= "SVDF", param= list(k=SVDF.K, gamma=SVDF.G, lambda=SVDF.L, min_epochs=SVDF.minE, max_epochs=SVDF.MaxE, min_improvement=SVDF.I, normalize=SVDF.N, verbose=SVDF.V))
 
-
-predictions <- predict(recommend, validation, type = "ratingMatrix") #type = realRatingMatrix ?
-Accuracy <- calcPredictionAccuracy(validation,predictions)
+######CHRONO#####
+start.time <- Sys.time()
+predictions <- predict(recommend, validation_rrm, type = "ratingMatrix") #type = realRatingMatrix ?
+Accuracy <- calcPredictionAccuracy(validation_rrm, predictions)
 gc(verbose = FALSE)
 
 rm(predictions)  # Freeing memory
