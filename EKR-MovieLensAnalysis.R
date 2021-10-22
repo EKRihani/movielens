@@ -79,16 +79,16 @@ omp_set_num_threads(Ncores)
 ###########################
 
 ## Set-up
-   # Check/install required packages/libraries
-   if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
-   if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
-   if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
-   # Load required packages/libraries
-   library(reshape2)       # For acast function
-   library(ggplot2)        # For pretty graphics
-   library(recommenderlab) # For data analysis
-   # Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during our Matrix/realRatingMatrix conversion...
-   memory.limit(size = 50000)
+# Check/install required packages/libraries
+if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
+# Load required packages/libraries
+library(reshape2)       # For acast function
+library(ggplot2)        # For pretty graphics
+library(recommenderlab) # For data analysis
+# Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during our Matrix/realRatingMatrix conversion...
+memory.limit(size = 50000)
 
 ## Basic data to introduce the whole dataset (training + validation)
 total_dataset <- full_join(edx,validation)
@@ -97,44 +97,67 @@ total_number_movies <- n_distinct(total_dataset$movieId)
 total_number_users <- n_distinct(total_dataset$userId)
 column_names <- colnames(total_dataset)
 rm(total_dataset)    # Free some memory
+save(edx,validation, file = "edxval.RData")
 
+load(file = "edxval.RData")
 ## Prepare training dataset : adapt the "edx" set for a recommenderlab analysis
-   # 10-star scale + integer conversion (uses less RAM = less swapping = improved performance)
-   edx$rating <- edx$rating*2
-   edx$rating <- as.integer(edx$rating)
-   edx$movieId <- as.integer(edx$movieId)
-   edx$userId <- as.integer(edx$userId)
-   # Save the edx and validation datasets to an external file (will be used later for our validation set final preparation)
-   save(edx,validation, file = "edxval.RData")
-
+# 10-star scale + integer conversion (uses less RAM = less swapping = improved performance)
+edx$rating <- edx$rating*2
+edx$rating <- as.integer(edx$rating)
+edx$movieId <- as.integer(edx$movieId)
+edx$userId <- as.integer(edx$userId)
+# Save the edx and validation datasets to an external file (will be used later for our validation set final preparation)
+save(edx,validation, file = "edxval.RData")
 ##### Suppression valeurs inutilisées = GAIN PERFS #####
 missing_movieId <- anti_join(edx, validation, by = "movieId")
 missing_movieId <- missing_movieId %>% select(movieId) %>% group_by(movieId) %>% slice(1)
 edx <- anti_join(edx, missing_movieId, by = "movieId")
 ################   A ENLEVER +++++   ##################
 
-
-   # Convert training set to a matrix, then a realRatingMatrix (class used by recommenderlab)
-   gc(verbose = FALSE)     # Free as much memory as possible
-   edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
-   edx_rrm <- as(edx, "realRatingMatrix")
-   gc(verbose = FALSE)     # Free memory
-
+# Convert data set to matrix, then realRatingMatrix (class used by recommenderlab)
+gc(verbose = FALSE)     # Free as much memory as possible
+edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
+edx_rrm <- as(edx, "realRatingMatrix")
+gc(verbose = FALSE)     # Free memory
+rm(edx)  # Free memory
 #######################################
 #    BENCHMARKING TRAINING METHODS    #
 #######################################
-   
-## Building the training and prevalidation sets, on a smaller dataset
-   # Reducing set size to 5% of the edx dataset
-   train_size <-0.05
-   index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm) * train_size, replace = FALSE)
-   small_edx_rrm <- edx_rrm[index]
-   # Building the training and evaluation sets with Recommenderlab
-   #EXEMPLE evaluationScheme(data, method = "split", train = 0.9, k = NULL, given, goodRating = NA)
-   evaluation <- evaluationScheme(data = small_edx_rrm, method = "split", train = 0.9, given = 1)
-   
-# Running the first benchmark, all methods, default parameters
-   list_methods <- c("RANDOM", "POPULAR", "IBCF", "UBCF", "SVD", "SVDF", "ALS", "ALS_implicit")
+
+
+## Build the training and prevalidation sets, on a smaller dataset
+# Reduce set size
+train_size <-0.5
+index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm) * train_size, replace = FALSE)
+small_edx_rrm <- edx_rrm[index]
+# Building the training and evaluation sets with Recommenderlab
+evaluation <- evaluationScheme(data = small_edx_rrm, method = "split", train = 0.9, given = 1)
+
+# Run the first benchmark, all methods, default parameters
+#list_methods <- c("RANDOM", "POPULAR", "IBCF", "UBCF", "SVD", "SVDF", "ALS", "ALS_implicit", "LIBMF")
+list_methods <- c("RANDOM", "POPULAR","LIBMF") ### Liste Courte
+
+# Benchmark (time and RMSE) each method
+benchmark <- function(model){
+   start_time <- Sys.time()
+   recommend <- Recommender(getData(evaluation, "train"), model)  # Set recommendation parameters
+   predict <- predict(recommend, getData(evaluation, "known"), type = "ratingMatrix")  # Run prediction
+   accuracy <- calcPredictionAccuracy(predict,getData(evaluation, "unknown")) # Compute accuracy
+   end_time <- Sys.time()
+   running_time <- end_time - start_time
+   rmse <- as.numeric(accuracy["RMSE"]/2) # Convert 10-stars RMSE to 5-stars RMSE
+   c(model, rmse, running_time)
+}
+
+# Report and plot benchmarking results
+benchmark_result <- as.data.frame(t(sapply(X = list_methods, FUN = benchmark)))
+colnames(benchmark_result) <- c("model", "RMSE", "time")
+benchmark_result
+benchmark_result %>%
+   ggplot(aes(x = RMSE, y = time)) +
+   geom_point() +
+   ggtitle("Recommanderlab Model Performance") 
+   #geom_text()
 
 ######################################
 #    FINE-TUNING TRAINING METHODS    #
@@ -148,33 +171,33 @@ edx <- anti_join(edx, missing_movieId, by = "movieId")
 #####################################################
 
 ## Prepare the validation dataset for RMSE computation
-   # Load edx and validation datasets
-#  load("edxval.RData")    ### A remettre
-  # 10-star scale + integer conversion (uses less RAM = less swapping = improves performance)
-  validation$rating <- validation$rating*2
-  validation$rating <- as.integer(validation$rating)
-  validation$movieId <- as.integer(validation$movieId)
-  validation$userId <- as.integer(validation$userId)
-   # Remove data that weren't used in this study
-   validation <- validation %>% select(userId,movieId,rating)
-   edx <- edx %>% select(userId,movieId,rating)
-   # Detect missing movies in the validation set (present in the training but not in the validation set), keeping 1 movieId for each
-   missing_movieId <- anti_join(edx, validation, by = "movieId")
-   missing_movieId <- missing_movieId %>% group_by(movieId) %>% slice(1)
-   # Fill these missing lines with empty (NA) ratings
-#   missing_movieId$userId <- NA   ### A remettre
-#   missing_movieId$rating <- NA   ### A remettre
-#   missing_movieId <- as.data.frame(missing_movieId)  ### A remettre
-   # Integrate empty rows after the validation set
-#   validation <- rbind(validation, missing_movieId)    ###  A remettre
+# Load edx and validation datasets
+#load("edxval.RData")    ### A remettre
+# 10-star scale + integer conversion (uses less RAM = less swapping = improves performance)
+validation$rating <- validation$rating*2
+validation$rating <- as.integer(validation$rating)
+validation$movieId <- as.integer(validation$movieId)
+validation$userId <- as.integer(validation$userId)
 
-   # Free memory before converting to matrix & realRatingMatrix
-   gc(verbose = FALSE)     # Free memory
-      # Convert validation set to matrix, then realRatingMatrix (class used by recommenderlab)
-   validation_rrm <- acast(validation, userId ~ movieId, value.var = "rating")
-   validation_rrm <- as(validation, "realRatingMatrix")
-   gc(verbose = FALSE)     # Free memory
-   rm(edx, validation)     # edx/validation won't be used anymore ; keeping only edx_rrm/validation_rrm
+# Remove data that weren't used in this study
+validation <- validation %>% select(userId,movieId,rating)
+edx <- edx %>% select(userId,movieId,rating)
+# Detect missing movies in the validation set (present in the training but not in the validation set), keeping 1 movieId for each
+missing_movieId <- anti_join(edx, validation, by = "movieId")
+missing_movieId <- missing_movieId %>% group_by(movieId) %>% slice(1)
+# Fill these missing lines with empty (NA) ratings
+#missing_movieId$userId <- NA   ### A remettre
+#missing_movieId$rating <- NA   ### A remettre
+#missing_movieId <- as.data.frame(missing_movieId)  ### A remettre
+# Integrate empty rows after the validation set
+#validation <- rbind(validation, missing_movieId)    ###  A remettre
+
+# Convert validation set to matrix, then realRatingMatrix (class used by recommenderlab)
+gc(verbose = FALSE)
+validation_rrm <- acast(validation, userId ~ movieId, value.var = "rating")
+validation_rrm <- as(validation, "realRatingMatrix")
+gc(verbose = FALSE)
+rm(edx, validation)     # edx/validation won't be used anymore ; keeping only edx_rrm/validation_rrm
    
 ###### Enregistrement SETS #####
 save(edx_rrm, validation_rrm, file = "edxval_rrm.RData")
@@ -255,10 +278,10 @@ SVDF.V <- FALSE
 ######CHRONO#####
 start.time <- Sys.time()
 predictions <- predict(recommend, validation_rrm, type = "ratingMatrix") #type = realRatingMatrix ?
-Accuracy <- calcPredictionAccuracy(validation_rrm, predictions)
+accuracy <- calcPredictionAccuracy(validation_rrm, predictions)
 gc(verbose = FALSE)
 
-rm(predictions)  # Freeing memory
+rm(predictions)  # Free memory
 gc(verbose = FALSE)
 
 ##### CHRONO#####
@@ -266,7 +289,7 @@ end.time <- Sys.time()
 time.pred <- end.time - start.time
 time.pred
 ##########################"
-Accuracy["RMSE"]/2
+accuracy["RMSE"]/2
 
 save.image(file = "EKR-MovieLens.RData")
 
