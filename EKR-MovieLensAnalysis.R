@@ -19,15 +19,15 @@ library(data.table)
 dl <- tempfile()
 #download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl) # FICHIER A DISTANCE
 
-#dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
-#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
-#                 col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
+ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+                 col.names = c("userId", "movieId", "rating", "timestamp"))
+movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
 ##### DEBUT A ENLEVER ####
-dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
-ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
+#dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
+#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+#movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
 
 #dl <- "~/projects/movielens/ml-latest-small.zip"   # /!\ MICRO dataset
 #ratings <- fread(text = gsub(",", "\t", readLines(unzip(dl, "ml-latest-small/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
@@ -82,11 +82,15 @@ omp_set_num_threads(Ncores)
 # Check/install required packages/libraries
 if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
 if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+#if(!require(ggrepel)) install.packages("ggrepel", repos = "http://cran.us.r-project.org")
 if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
+if(!require(parallel)) install.packages("parallel", repos = "http://cran.us.r-project.org")
 # Load required packages/libraries
 library(reshape2)       # For acast function
 library(ggplot2)        # For pretty graphics
+#library(ggrepel)        # For repelled labels on graphics
 library(recommenderlab) # For data analysis
+library(parallel)       # For mclapply function (multi-thread lapply)
 # Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during our Matrix/realRatingMatrix conversion...
 memory.limit(size = 50000)
 
@@ -120,45 +124,51 @@ edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
 edx_rrm <- as(edx, "realRatingMatrix")
 gc(verbose = FALSE)     # Free memory
 rm(edx)  # Free memory
+
 #######################################
 #    BENCHMARKING TRAINING METHODS    #
 #######################################
 
-
-## Build the training and prevalidation sets, on a smaller dataset
+## Build the benchmarkingdata set
 # Reduce set size
-train_size <-0.5
+train_size <-0.05
 index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm) * train_size, replace = FALSE)
 small_edx_rrm <- edx_rrm[index]
-# Building the training and evaluation sets with Recommenderlab
+# Build the training and evaluation sets with Recommenderlab
 evaluation <- evaluationScheme(data = small_edx_rrm, method = "split", train = 0.9, given = 1)
 
-# Run the first benchmark, all methods, default parameters
+## Run the first benchmark, all methods, default parameters
 #list_methods <- c("RANDOM", "POPULAR", "IBCF", "UBCF", "SVD", "SVDF", "ALS", "ALS_implicit", "LIBMF")
-list_methods <- c("RANDOM", "POPULAR","LIBMF") ### Liste Courte
+#list_methods <- c("RANDOM", "POPULAR", "SVD", "SVDF", "ALS", "ALS_implicit", "LIBMF")
+list_methods <- c("RANDOM", "POPULAR", "SVD", "ALS", "LIBMF") ## Liste Courte
+#list_methods <- c("RANDOM", "POPULAR","LIBMF") ### Liste Ultra-Courte
 
-# Benchmark (time and RMSE) each method
+# Benchmark (time and RMSE) for each method
 benchmark <- function(model){
    start_time <- Sys.time()
    recommend <- Recommender(getData(evaluation, "train"), model)  # Set recommendation parameters
    predict <- predict(recommend, getData(evaluation, "known"), type = "ratingMatrix")  # Run prediction
    accuracy <- calcPredictionAccuracy(predict,getData(evaluation, "unknown")) # Compute accuracy
    end_time <- Sys.time()
-   running_time <- end_time - start_time
-   rmse <- as.numeric(accuracy["RMSE"]/2) # Convert 10-stars RMSE to 5-stars RMSE
-   c(model, rmse, running_time)
+   running_time <- round(end_time - start_time, 2)
+   rmse <- as.numeric(round(accuracy["RMSE"]/2,4)) # Convert 10-stars RMSE to 5-stars RMSE
+   c(rmse, running_time)
 }
-
+start_time <- Sys.time() ### A enlever
 # Report and plot benchmarking results
-benchmark_result <- as.data.frame(t(sapply(X = list_methods, FUN = benchmark)))
-colnames(benchmark_result) <- c("model", "RMSE", "time")
+#benchmark_result <- lapply(X = list_methods, FUN = benchmark) # Tester mclappy (package parallel)
+#benchmark_result <- data.frame(t(do.call("cbind", benchmark_result)))
+benchmark_result <- as.data.frame(t(sapply(X = list_methods, FUN = benchmark))) # Plus lent ???
+colnames(benchmark_result) <- c("RMSE", "time")
+benchmark_result$RMSE <- as.numeric(benchmark_result$RMSE)
+benchmark_result$time <- as.numeric(benchmark_result$time)
 benchmark_result
+end_time <- Sys.time() ### A enlever
+end_time - start_time ### A enlever
 benchmark_result %>%
-   ggplot(aes(x = RMSE, y = time)) +
-   geom_point() +
-   ggtitle("Recommanderlab Model Performance") 
-   #geom_text()
-
+   ggplot(aes(x = time, y = RMSE, label = row.names(.))) +
+   geom_label() +
+   ggtitle("Recommanderlab Models Performance")
 ######################################
 #    FINE-TUNING TRAINING METHODS    #
 ######################################   
