@@ -72,10 +72,10 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 ##########################
 
 ######### MULTITHREAD LIBRARY (needs OpenBLAS)
-library(RhpcBLASctl)
-Ncores <- get_num_procs()
-blas_set_num_threads(Ncores)
-omp_set_num_threads(Ncores)
+#library(RhpcBLASctl)
+#Ncores <- get_num_procs()
+#blas_set_num_threads(Ncores)
+#omp_set_num_threads(Ncores)
 ###########################
 
 ## Set-up
@@ -131,24 +131,27 @@ rm(edx)  # Free memory
 
 ## Build the benchmarkingdata set
 # Reduce set size
-train_size <-0.05
-index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm) * train_size, replace = FALSE)
-small_edx_rrm <- edx_rrm[index]
-# Build the training and evaluation sets with Recommenderlab
-evaluation <- evaluationScheme(data = small_edx_rrm, method = "split", train = 0.9, given = 1)
+train_size <- 0.1
+set.seed(1234, sample.kind="Rounding") # if using R 3.5 or earlier, use `set.seed(1234)`
+reduction_index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm) * train_size, replace = FALSE)
+edx_rrm_small <- edx_rrm[reduction_index]
+# Build the training and evaluation sets
+train_ratio <- 0.9
+test_index <- sample(x = seq(1, nrow(edx_rrm_small)), size = nrow(edx_rrm_small)*train_ratio, replace = FALSE)
+edx_rrm_train <- edx_rrm_small[test_index]
+edx_rrm_test <- edx_rrm_small[-test_index]
 
-## Run the first benchmark, all methods, default parameters
-#list_methods <- c("RANDOM", "POPULAR", "IBCF", "UBCF", "SVD", "SVDF", "ALS", "ALS_implicit", "LIBMF")
-#list_methods <- c("RANDOM", "POPULAR", "SVD", "SVDF", "ALS", "ALS_implicit", "LIBMF")
-list_methods <- c("RANDOM", "POPULAR", "SVD", "ALS", "LIBMF") ## Liste Courte
+## Run the first benchmark, all methods, default parameters (no IBCF)
+#list_methods <- c("RANDOM", "POPULAR",  "UBCF", "SVD", "SVDF", "ALS", "ALS_implicit", "LIBMF")
+list_methods <- c("RANDOM", "POPULAR", "SVD", "ALS", "LIBMF", "UBCF") ## Liste Courte
 #list_methods <- c("RANDOM", "POPULAR","LIBMF") ### Liste Ultra-Courte
 
 # Benchmark (time and RMSE) for each method
 benchmark <- function(model){
    start_time <- Sys.time()
-   recommend <- Recommender(getData(evaluation, "train"), model)  # Set recommendation parameters
-   predict <- predict(recommend, getData(evaluation, "known"), type = "ratingMatrix")  # Run prediction
-   accuracy <- calcPredictionAccuracy(predict,getData(evaluation, "unknown")) # Compute accuracy
+   recommend <- Recommender(edx_rrm_train, model)  # Set recommendation parameters
+   prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # Run prediction
+   accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
    end_time <- Sys.time()
    running_time <- round(end_time - start_time, 2)
    rmse <- as.numeric(round(accuracy["RMSE"]/2,4)) # Convert 10-stars RMSE to 5-stars RMSE
@@ -169,12 +172,68 @@ benchmark_result %>%
    ggplot(aes(x = time, y = RMSE, label = row.names(.))) +
    geom_label() +
    ggtitle("Recommanderlab Models Performance")
-######################################
-#    FINE-TUNING TRAINING METHODS    #
-######################################   
 
-##### Section à réinsérer ici #####
+###############################################
+#    FINE-TUNING SELECTED TRAINING METHODS    #
+###############################################
 
+##### RANDOM Method #####
+#recommend <- Recommender(data=edx_rrm, method="RANDOM")
+
+##### SVD System #####
+SVD.K <- 10 # Défaut = 10 (meilleur RMSE >= 500)
+SVD.M <- 100 # Défaut = 100 (pas d'effet???)
+SVD.N <- "center" # center, Z-Score (pas d'effet???)
+#recommend <- Recommender(data=edx_rrm, method="SVD", param=list(k=SVD.K, maxiter=SVD.M, normalize=SVD.N))
+
+##### POPULAR Method #####
+POP.N <- "center" # center, Z-Score (Z plus rapide ?)
+#recommend <- Recommender(data=edx_rrm, method="POPULAR", param=list(normalize=POP.N))
+
+##### IBCF Method #####
+IBCF.K <- 30         # k (default = 30)
+IBCF.M <- "Cosine"   # Method (default = Cosine)
+IBCF.N <- "center"   # Normalize (default = center)
+IBCF.NSM <- FALSE    # Normalize Sim Matrix (default = FALSE)
+IBCF.A <-0.5         # Alpha (default = 0.5)
+IBCF.NAZ <- FALSE    #Na as Zero (default = FALSE)
+#recommend <- Recommender(data = edx_rrm, method = "IBCF", param = list(k=IBCF.K, method=IBCF.M, normalize=IBCF.N, normalize_sim_matrix=IBCF.NSM, alpha=IBCM.A, na_as_zero=IBCM.NAZ))
+
+##### UBCF Method ##### ????? NE MARCHE PAS ?????
+UBCF.M <- "cosine"
+UBCF.N <- 25
+UBCF.S <- FALSE
+UBCF.W <- TRUE
+UBCF.N <- "center"
+UBCF.MM <- 0
+UBCF.MP <- 0
+#recommend <- Recommender(data=edx_rrm, method="UBCF", param=list(method=UBCF.M, nn=UBCF.N, sample=UBCF.S, weighted=UBCF.W, normalize=UBCF.N, min_matching_items=UBCF.MM, min_predictive_items=UBCF.MP))
+
+##### LIBMF Method #####
+LIBMF.D <- 100  # 10 par défaut (+++ précision)
+LIBMF.P <- 0.01   # 0.01 par défaut
+LIBMF.Q <- 0.01  #0.01 par défaut
+LIBMF.T <- 16   # 1 par défaut
+#recommend <- Recommender(data=edx_rrm,method="LIBMF", param=list(dim=LIBMF.D,costp_l2=LIBMF.P, costq_l2=LIBMF.Q,  nthread=LIBMF.T))
+#recommend <- Recommender(data=edx_rrm,method="LIBMF")
+
+##### ALS Method #####
+ALS.L <- 0.001  # 0.1 par défaut (meilleur RMSE < 0.02)
+ALS.F <- 50  # 10 par défaut (+ précision)
+ALS.I <- 10  # 10 par défaut (++ temps, + précision)
+ALS.M <- 1
+#recommend <- Recommender(data=edx_rrm, method="ALS", param=list(lambda=ALS.L, n_factors=ALS.F, n_iterations=ALS.I, min_item_nr=ALS.M))
+
+##### SVDF Method #####
+SVDF.K <- 10  #10 par défaut
+SVDF.G <- 0.015  #0,015 par défaut
+SVDF.L <- 0.001  #0,001 par défaut (meilleur RMSE 0,01)
+SVDF.minE <- 50  #50 par défaut
+SVDF.MaxE <- 400 #200 par défaut (++temps, + précision)
+SVDF.I <- 0.000001
+SVDF.N <- "center"
+SVDF.V <- FALSE
+#recommend <- Recommender(data=edx_rrm, method= "SVDF", param= list(k=SVDF.K, gamma=SVDF.G, lambda=SVDF.L, min_epochs=SVDF.minE, max_epochs=SVDF.MaxE, min_improvement=SVDF.I, normalize=SVDF.N, verbose=SVDF.V))
 
 #####################################################
 #    CALCULATING RMSE AGAINST THE VALIDATION SET    #
@@ -223,67 +282,6 @@ save(edx_rrm, validation_rrm, file = "edxval_rrm.RData")
 #hist(colMeans(train))
 
 
-######################################
-#    FINE-TUNING TRAINING METHODS    #
-######################################
-
-##### RANDOM Method #####
-#recommend <- Recommender(data=edx_rrm, method="RANDOM")
-
-##### SVD System #####
-SVD.K <- 10 # Défaut = 10 (meilleur RMSE >= 500)
-SVD.M <- 100 # Défaut = 100 (pas d'effet???)
-SVD.N <- "center" # center, Z-Score (pas d'effet???)
-#recommend <- Recommender(data=edx_rrm, method="SVD", param=list(k=SVD.K, maxiter=SVD.M, normalize=SVD.N))
-
-##### POPULAR Method #####
-POP.N <- "center" # center, Z-Score (Z plus rapide ?)
-#recommend <- Recommender(data=edx_rrm, method="POPULAR", param=list(normalize=POP.N))
-
-##### IBCF Method #####
-IBCF.K <- 30         # k (default = 30)
-IBCF.M <- "Cosine"   # Method (default = Cosine)
-IBCF.N <- "center"   # Normalize (default = center)
-IBCF.NSM <- FALSE    # Normalize Sim Matrix (default = FALSE)
-IBCF.A <-0.5         # Alpha (default = 0.5)
-IBCF.NAZ <- FALSE    #Na as Zero (default = FALSE)
-#recommend <- Recommender(data = edx_rrm, method = "IBCF", param = list(k=IBCF.K, method=IBCF.M, normalize=IBCF.N, normalize_sim_matrix=IBCF.NSM, alpha=IBCM.A, na_as_zero=IBCM.NAZ))
-
-##### UBCF Method ##### ????? NE MARCHE PAS ?????
-UBCF.M <- "cosine"
-UBCF.N <- 25
-UBCF.S <- FALSE
-UBCF.W <- TRUE
-UBCF.N <- "center"
-UBCF.MM <- 0
-UBCF.MP <- 0
-#recommend <- Recommender(data=edx_rrm, method="UBCF", param=list(method=UBCF.M, nn=UBCF.N, sample=UBCF.S, weighted=UBCF.W, normalize=UBCF.N, min_matching_items=UBCF.MM, min_predictive_items=UBCF.MP))
-
-##### LIBMF Method #####
-LIBMF.D <- 100  # 10 par défaut (+++ précision)
-LIBMF.P <- 0.01   # 0.01 par défaut
-LIBMF.Q <- 0.01  #0.01 par défaut
-LIBMF.T <- 16   # 1 par défaut
-#recommend <- Recommender(data=edx_rrm,method="LIBMF", param=list(dim=LIBMF.D,costp_l2=LIBMF.P, costq_l2=LIBMF.Q,  nthread=LIBMF.T))
-recommend <- Recommender(data=edx_rrm,method="LIBMF")
-
-##### ALS Method #####
-ALS.L <- 0.001  # 0.1 par défaut (meilleur RMSE < 0.02)
-ALS.F <- 50  # 10 par défaut (+ précision)
-ALS.I <- 10  # 10 par défaut (++ temps, + précision)
-ALS.M <- 1
-#recommend <- Recommender(data=edx_rrm, method="ALS", param=list(lambda=ALS.L, n_factors=ALS.F, n_iterations=ALS.I, min_item_nr=ALS.M))
-
-##### SVDF Method #####
-SVDF.K <- 10  #10 par défaut
-SVDF.G <- 0.015  #0,015 par défaut
-SVDF.L <- 0.001  #0,001 par défaut (meilleur RMSE 0,01)
-SVDF.minE <- 50  #50 par défaut
-SVDF.MaxE <- 400 #200 par défaut (++temps, + précision)
-SVDF.I <- 0.000001
-SVDF.N <- "center"
-SVDF.V <- FALSE
-#recommend <- Recommender(data=edx_rrm, method= "SVDF", param= list(k=SVDF.K, gamma=SVDF.G, lambda=SVDF.L, min_epochs=SVDF.minE, max_epochs=SVDF.MaxE, min_improvement=SVDF.I, normalize=SVDF.N, verbose=SVDF.V))
 
 ######CHRONO#####
 start.time <- Sys.time()
