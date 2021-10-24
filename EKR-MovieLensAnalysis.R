@@ -82,15 +82,15 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 # Check/install required packages/libraries
 if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
 if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
-#if(!require(ggrepel)) install.packages("ggrepel", repos = "http://cran.us.r-project.org")
+if(!require(ggrepel)) install.packages("ggrepel", repos = "http://cran.us.r-project.org")
 if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
 if(!require(parallel)) install.packages("parallel", repos = "http://cran.us.r-project.org")
 # Load required packages/libraries
 library(reshape2)       # For acast function
 library(ggplot2)        # For pretty graphics
-#library(ggrepel)        # For repelled labels on graphics
+library(ggrepel)        # For repelled labels on graphics
 library(recommenderlab) # For data analysis
-library(parallel)       # For mclapply function (multi-thread lapply)
+library(parallel)       # For parSapply function (multi-thread sapply)
 # Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during our Matrix/realRatingMatrix conversion...
 memory.limit(size = 50000)
 
@@ -129,9 +129,9 @@ rm(edx)  # Free memory
 #    BENCHMARKING TRAINING METHODS    #
 #######################################
 
-## Build the benchmarkingdata set
+## Build the benchmarking data set
 # Reduce set size
-train_size <- 0.1
+train_size <- 0.01
 set.seed(1234, sample.kind="Rounding") # if using R 3.5 or earlier, use `set.seed(1234)`
 reduction_index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm) * train_size, replace = FALSE)
 edx_rrm_small <- edx_rrm[reduction_index]
@@ -141,27 +141,33 @@ test_index <- sample(x = seq(1, nrow(edx_rrm_small)), size = nrow(edx_rrm_small)
 edx_rrm_train <- edx_rrm_small[test_index]
 edx_rrm_test <- edx_rrm_small[-test_index]
 
-## Run the first benchmark, all methods, default parameters (no IBCF)
-#list_methods <- c("RANDOM", "POPULAR",  "UBCF", "SVD", "SVDF", "ALS", "ALS_implicit", "LIBMF")
-list_methods <- c("RANDOM", "POPULAR", "SVD", "ALS", "LIBMF", "UBCF") ## Liste Courte
-#list_methods <- c("RANDOM", "POPULAR","LIBMF") ### Liste Ultra-Courte
+## Run the first benchmark, all methods, default parameters (no IBCF: abysmal performance)
+list_methods <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF") # For 1%
+#list_methods <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "UBCF") # Fpr 2-5%
+#list_methods <- c("RANDOM", "POPULAR","LIBMF", "SVD") # Above 5%
 
 # Benchmark (time and RMSE) for each method
 benchmark <- function(model){
    start_time <- Sys.time()
-   recommend <- Recommender(edx_rrm_train, model)  # Set recommendation parameters
+   recommend <- Recommender(data = edx_rrm_train, method = model)  # Set recommendation parameters
    prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # Run prediction
    accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
    end_time <- Sys.time()
-   running_time <- round(end_time - start_time, 2)
+   running_time <- round(difftime(end_time, start_time, units = "secs"),2) # Time difference, unit forced (so mins and secs aren't mixed...)
    rmse <- as.numeric(round(accuracy["RMSE"]/2,4)) # Convert 10-stars RMSE to 5-stars RMSE
    c(rmse, running_time)
 }
 start_time <- Sys.time() ### A enlever
+# Set multithreading
+#n_threads <- detectCores()
+#cluster <- makeCluster(n_threads)
+#clusterExport(cluster, varlist=c("edx_rrm_test","edx_rrm_train"))
+#clusterEvalQ(cluster, library(recommenderlab))
+
 # Report and plot benchmarking results
-#benchmark_result <- lapply(X = list_methods, FUN = benchmark) # Tester mclappy (package parallel)
-#benchmark_result <- data.frame(t(do.call("cbind", benchmark_result)))
-benchmark_result <- as.data.frame(t(sapply(X = list_methods, FUN = benchmark))) # Plus lent ???
+benchmark_result <- as.data.frame(t(sapply(X = list_methods, FUN = benchmark)))
+#benchmark_result <- as.data.frame(t(parSapply(cl = cluster, X = list_methods, FUN = benchmark))) # Parallel sapply
+#stopCluster(cluster) # Stop multithread
 colnames(benchmark_result) <- c("RMSE", "time")
 benchmark_result$RMSE <- as.numeric(benchmark_result$RMSE)
 benchmark_result$time <- as.numeric(benchmark_result$time)
@@ -170,44 +176,39 @@ end_time <- Sys.time() ### A enlever
 end_time - start_time ### A enlever
 benchmark_result %>%
    ggplot(aes(x = time, y = RMSE, label = row.names(.))) +
-   geom_label() +
+   geom_point() +
+   geom_text_repel() +
    ggtitle("Recommanderlab Models Performance")
 
+gc(verbose = FALSE)     # Free memory
 ###############################################
 #    FINE-TUNING SELECTED TRAINING METHODS    #
 ###############################################
 
-##### RANDOM Method #####
-#recommend <- Recommender(data=edx_rrm, method="RANDOM")
+# Fitting function that measures time and RMSE for each function and parameter
 
+##### A MODIFIER #####
+fitting <- function(model, parameter, value){
+   start_time <- Sys.time()
+   recommend <- Recommender(data = edx_rrm_train, model)  # Set recommendation parameters
+   prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # Run prediction
+   accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
+   end_time <- Sys.time()
+   running_time <- difftime(end_time, start_time, units = "secs") # Time difference, unit forced (so mins and secs aren't mixed...)
+   rmse <- as.numeric(round(accuracy["RMSE"]/2,4)) # Convert 10-stars RMSE to 5-stars RMSE
+   c(rmse, running_time)
+}
 ##### SVD System #####
 SVD.K <- 10 # Défaut = 10 (meilleur RMSE >= 500)
 SVD.M <- 100 # Défaut = 100 (pas d'effet???)
 SVD.N <- "center" # center, Z-Score (pas d'effet???)
 #recommend <- Recommender(data=edx_rrm, method="SVD", param=list(k=SVD.K, maxiter=SVD.M, normalize=SVD.N))
 
+
+
 ##### POPULAR Method #####
 POP.N <- "center" # center, Z-Score (Z plus rapide ?)
 #recommend <- Recommender(data=edx_rrm, method="POPULAR", param=list(normalize=POP.N))
-
-##### IBCF Method #####
-IBCF.K <- 30         # k (default = 30)
-IBCF.M <- "Cosine"   # Method (default = Cosine)
-IBCF.N <- "center"   # Normalize (default = center)
-IBCF.NSM <- FALSE    # Normalize Sim Matrix (default = FALSE)
-IBCF.A <-0.5         # Alpha (default = 0.5)
-IBCF.NAZ <- FALSE    #Na as Zero (default = FALSE)
-#recommend <- Recommender(data = edx_rrm, method = "IBCF", param = list(k=IBCF.K, method=IBCF.M, normalize=IBCF.N, normalize_sim_matrix=IBCF.NSM, alpha=IBCM.A, na_as_zero=IBCM.NAZ))
-
-##### UBCF Method ##### ????? NE MARCHE PAS ?????
-UBCF.M <- "cosine"
-UBCF.N <- 25
-UBCF.S <- FALSE
-UBCF.W <- TRUE
-UBCF.N <- "center"
-UBCF.MM <- 0
-UBCF.MP <- 0
-#recommend <- Recommender(data=edx_rrm, method="UBCF", param=list(method=UBCF.M, nn=UBCF.N, sample=UBCF.S, weighted=UBCF.W, normalize=UBCF.N, min_matching_items=UBCF.MM, min_predictive_items=UBCF.MP))
 
 ##### LIBMF Method #####
 LIBMF.D <- 100  # 10 par défaut (+++ précision)
@@ -216,24 +217,6 @@ LIBMF.Q <- 0.01  #0.01 par défaut
 LIBMF.T <- 16   # 1 par défaut
 #recommend <- Recommender(data=edx_rrm,method="LIBMF", param=list(dim=LIBMF.D,costp_l2=LIBMF.P, costq_l2=LIBMF.Q,  nthread=LIBMF.T))
 #recommend <- Recommender(data=edx_rrm,method="LIBMF")
-
-##### ALS Method #####
-ALS.L <- 0.001  # 0.1 par défaut (meilleur RMSE < 0.02)
-ALS.F <- 50  # 10 par défaut (+ précision)
-ALS.I <- 10  # 10 par défaut (++ temps, + précision)
-ALS.M <- 1
-#recommend <- Recommender(data=edx_rrm, method="ALS", param=list(lambda=ALS.L, n_factors=ALS.F, n_iterations=ALS.I, min_item_nr=ALS.M))
-
-##### SVDF Method #####
-SVDF.K <- 10  #10 par défaut
-SVDF.G <- 0.015  #0,015 par défaut
-SVDF.L <- 0.001  #0,001 par défaut (meilleur RMSE 0,01)
-SVDF.minE <- 50  #50 par défaut
-SVDF.MaxE <- 400 #200 par défaut (++temps, + précision)
-SVDF.I <- 0.000001
-SVDF.N <- "center"
-SVDF.V <- FALSE
-#recommend <- Recommender(data=edx_rrm, method= "SVDF", param= list(k=SVDF.K, gamma=SVDF.G, lambda=SVDF.L, min_epochs=SVDF.minE, max_epochs=SVDF.MaxE, min_improvement=SVDF.I, normalize=SVDF.N, verbose=SVDF.V))
 
 #####################################################
 #    CALCULATING RMSE AGAINST THE VALIDATION SET    #
@@ -281,22 +264,12 @@ save(edx_rrm, validation_rrm, file = "edxval_rrm.RData")
 # Mean rating for each movie
 #hist(colMeans(train))
 
-
-
-######CHRONO#####
-start.time <- Sys.time()
 predictions <- predict(recommend, validation_rrm, type = "ratingMatrix") #type = realRatingMatrix ?
 accuracy <- calcPredictionAccuracy(validation_rrm, predictions)
 gc(verbose = FALSE)
 
 rm(predictions)  # Free memory
 gc(verbose = FALSE)
-
-##### CHRONO#####
-end.time <- Sys.time()
-time.pred <- end.time - start.time
-time.pred
-##########################"
 accuracy["RMSE"]/2
 
 save.image(file = "EKR-MovieLens.RData")
