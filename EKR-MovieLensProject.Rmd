@@ -17,31 +17,40 @@ The aim of this study is to analyze a MovieLens dataset and try to create a mode
 
 ## 1.2 The dataset
 The MovieLens datasets were created by the GroupLens research lab, from the Department of Computer Science and Engineering at the University of Minnesota.  
-The dataset used for this study is the 10M dataset ([link](https://grouplens.org/datasets/movielens/10m/).
+The dataset used for this study is the 10M dataset (https://grouplens.org/datasets/movielens/10m/).
 The 10M MovieLens dataset contains `r total_number_ratings` ratings for `r total_number_movies` movies, from `r total_number_users` users.  
-The provided information inclue the user unique ID (`r column_names[1]`), the movie unique ID (`r column_names[2]`), the rating given by the user (`r column_names[3]`), the timestamp of the rating (`r column_names[4]`), the title of the movie (`r column_names[5]`) and its genre (`r column_names[6]`).
+The provided information includes the user unique ID (`r column_names[1]`), the movie unique ID (`r column_names[2]`), the rating given by the user (`r column_names[3]`), the timestamp of the rating (`r column_names[4]`), the title of the movie (`r column_names[5]`) and its genre (`r column_names[6]`).  
+This dataset was split into a training set (*edx*, 90% of the ratings) that will be used for building and training the recommendation system and a validation set (*validation*, 10% of the ratings) that will exclusively be used for the final evaluation of the accuracy of our recommendation system.
 
 # 2. Methods and Analysis
-## 2.1 The recommenderlab toolkit
-Our analysis will make ample use of the *recommenderlab* package, which includes quite powerful tools allows us to fully integrate them in our recommender system. Some of these tools can give stellar performances out of the box, with very simple code.
+This project will be articulated around the use of the *recommenderlab* package, which is a very powerful library for building recommendation systems that was recommended by Pr. Rafael Irizarry in his data science course.  
+We'll first briefly introduce the recommenderlab library and its different recommendation systems, then we'll evaluate their respective performances, both in computing time and accuracy, and we'll then optimize the tuning parameters of our best models before using the best model against our validation set.  
 
-## 2.2 Preparing data sets for recommenderlab
-The recommenderlab uses specific data structures, corresponding to the *RatingMatrix* and *realRatingMatrix* classes. In order to use the *recommenderlab* tools, we need to convert our *edx* dataset to a real rating matrix.
-Actually, we will use a three step process, by first reducing our training set to a *edx_light* set that has a manageable size.
-> size <- 0.5
-> set.seed(1337, sample.kind="Rounding")
-> index <- createDataPartition(y = edx$rating, times = 1, p = size, list = FALSE)
-> edx_light <- edx[index,]
-We then convert this *edx_light* set to a matrix, with *userId* as (rows/columns), *movieId* as (columns/rows) and *ratings* as values in the matrix.
-> EDX <- acast(edx_light, userId ~ movieId, value.var = "rating")
-And we finally convert this matrix to a realRatingMatrix.
-> EDX <- as(EDX, "realRatingMatrix")
+## 2.1 Preparing data for the recommenderlab package
+The recommenderlab package uses several specific data formats (*realRatingMatrix*)
+
+
+# 2.2 Comparing the performance of the different models
+Several metrics can be used to evaluate the accuracy of the prediction, such as the Mean Average Error (MAE, consistent with the data units), the Mean Square Error (MSE, penalizes large errors) and the Root Mean Square Error (RMSE, penalizes large errors **and** is consistent with the data units). The metric used in this study to evaluate the accuracy of the prediction is the root-mean-squared error (RMSE), given by : $$\sqrt{ \frac{1}{N} \sum_{m,u}\left(\hat{y}_{m,u} -  y_{m,u}\right)^{2}}$$ With N the number of ratings, $\hat{y}_{m,u}$ the rating (for the movie m, by the user u) that is predicted by the model built with the training set and $y_{m,u}$ the actual rating of the testing set. The lower the RMSE, the more accurate the model.  
+Recommenderlab conveniently provides a *calcPredictionAccuracy* function that computes the MAE, MSE, RMSE.
 
 Section that explains the process and techniques used, including data cleaning, data exploration and visualization, insights gained, and your modeling approach
 
 
 # 3. Results
-Section that presents the modeling results and discusses the model performance
+
+## 3.1. Performance of the different models
+We can create a scatterplot of the RMSE vs compute time of our different models.  
+As expected, the random model is among the fastest, but performs quite poorly.
+The Popular, SVD and LIBMF are clear winners, being all in the "fast and accurate" quadrant of this plot. UBCF appears to be a reasonnable option, too. SVDF's accuracy is on par with SVD, but SVDF seems to be much slower.  
+The ALS seems to be quite slow, but accurate. More suprisingly, the ALS_implicit model performs very poorly (being both the slowest and most inaccurate model), despite being based on an alternating least squares strategy like the regular ALS model.  
+Bigger datasets seems to confirm the respective places of the SVD, UBCF, LIBMF and Popular methods.
+
+## 3.2. Tuning the models
+
+## 3.3. Evaluation against the *validation* dataset
+
+Section that presents the modeling results and discusses the model performance. 
 
 # 4. Conclusion
 Section that gives a brief summary of the report, its limitations and future work

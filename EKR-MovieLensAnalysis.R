@@ -19,15 +19,15 @@ library(data.table)
 dl <- tempfile()
 #download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl) # FICHIER A DISTANCE
 
-dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
-ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
-                 col.names = c("userId", "movieId", "rating", "timestamp"))
-movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+#dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
+#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+#                 col.names = c("userId", "movieId", "rating", "timestamp"))
+#movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
 ##### DEBUT A ENLEVER ####
-#dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
-#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
+dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
+ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
 
 #dl <- "~/projects/movielens/ml-latest-small.zip"   # /!\ MICRO dataset
 #ratings <- fread(text = gsub(",", "\t", readLines(unzip(dl, "ml-latest-small/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
@@ -107,6 +107,8 @@ total_number_movies <- n_distinct(total_dataset$movieId)
 total_number_users <- n_distinct(total_dataset$userId)
 column_names <- colnames(total_dataset)
 rm(total_dataset)    # Free some memory
+
+#Save the edx and validation datasets to an external file (will be used later for our validation set final preparation)
 save(edx,validation, file = "edxval.RData")
 
 #load(file = "edxval.RData")
@@ -117,13 +119,7 @@ save(edx,validation, file = "edxval.RData")
 #edx$rating <- as.integer(edx$rating)
 #edx$movieId <- as.integer(edx$movieId)
 #edx$userId <- as.integer(edx$userId)
-# Save the edx and validation datasets to an external file (will be used later for our validation set final preparation)
-save(edx,validation, file = "edxval.RData")
-##### Suppression valeurs inutilisées = GAIN PERFS #####
-#missing_movieId <- anti_join(edx, validation, by = "movieId")
-#missing_movieId <- missing_movieId %>% select(movieId) %>% group_by(movieId) %>% slice(1)
-#edx <- anti_join(edx, missing_movieId, by = "movieId")
-################   A ENLEVER +++++   ##################
+
 
 # Convert data set to matrix, then realRatingMatrix (class used by recommenderlab)
 #gc(verbose = FALSE)     # Free as much memory as possible
@@ -176,7 +172,6 @@ plot_bench <- function(benchresult){
    benchresult %>%
       ggplot(aes(x = time, y = RMSE, label = row.names(.))) +
       geom_point() +
-      ggtitle("Recommanderlab Models Benchmark") +
       geom_text_repel()    # Add labels
 }
 
@@ -192,20 +187,25 @@ start.time <- Sys.time()  ### A SUPPRIMER
 # Build the 3 sets, run the 3 benchmarks, create the 3 plots
 dataset_build(train_size1)
 benchmark_result1 <- run_bench(list_methods1)
-plot_result1 <- plot_bench(benchmark_result1)
+plot_result1 <- plot_bench(benchmark_result1) +
+   ggtitle("Recommanderlab Benchmark (0.5 % subset)") +
+   geom_hline(yintercept = 0.9, linetype = "dotted", color = "red") + # Minimal objective
+   geom_hline(yintercept = 0.865, linetype = "dotted", color = "green")  # Optimal objective 
+
 dataset_build(train_size2)
 benchmark_result2 <- run_bench(list_methods2)
-plot_result2 <- plot_bench(benchmark_result2)
+plot_result2 <- plot_bench(benchmark_result2) +
+   ggtitle("Recommanderlab Benchmark (2 % subset)")
+
 dataset_build(train_size3)
-benchmark_result3 <- run_bench(list_methods3)
-plot_result3 <- plot_bench(benchmark_result3)
+benchmark_result3 <- run_bench(list_methods2)
+plot_result3 <- plot_bench(benchmark_result3) +
+   ggtitle("Recommanderlab Benchmark (10 % subset)")
 
 end.time <- Sys.time()  ### A SUPPRIMER
 end.time - start.time   ### A SUPPRIMER
 # Facultatif : affichage graphique
-plot_result1 +
-   geom_hline(yintercept = 0.9, linetype = "dotted", color = "red") + # Minimal objective
-   geom_hline(yintercept = 0.865, linetype = "dotted", color = "green")  # Optimal objective 
+plot_result1
 gc(verbose = FALSE)     # Free memory
 
 ###############################################
