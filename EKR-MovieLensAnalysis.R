@@ -171,8 +171,11 @@ run_bench <- function(model_list){
 plot_bench <- function(benchresult){
    benchresult %>%
       ggplot(aes(x = time, y = RMSE, label = row.names(.))) +
-      geom_point() +
-      geom_text_repel()    # Add labels
+         geom_point() +
+         scale_x_continuous(limits = c(0,NA)) +
+         geom_text_repel() +  # Add labels
+         geom_hline(yintercept = 0.9, linetype = "dashed", color = "darkred", alpha = 0.4) + # Minimal objective
+         geom_hline(yintercept = 0.865, linetype = "dashed", color = "darkgreen", alpha = 0.4)  # Optimal objective 
 }
 
 # Define tested models and dataset sizes (no IBCF)
@@ -188,10 +191,7 @@ start.time <- Sys.time()  ### A SUPPRIMER
 dataset_build(train_size1)
 benchmark_result1 <- run_bench(list_methods1)
 plot_result1 <- plot_bench(benchmark_result1) +
-   ggtitle("Recommanderlab Benchmark (0.5 % subset)") +
-   geom_hline(yintercept = 0.9, linetype = "dotted", color = "red") + # Minimal objective
-   geom_hline(yintercept = 0.865, linetype = "dotted", color = "green")  # Optimal objective 
-
+   ggtitle("Recommanderlab Benchmark (0.5 % subset)")
 dataset_build(train_size2)
 benchmark_result2 <- run_bench(list_methods2)
 plot_result2 <- plot_bench(benchmark_result2) +
@@ -202,12 +202,13 @@ benchmark_result3 <- run_bench(list_methods2)
 plot_result3 <- plot_bench(benchmark_result3) +
    ggtitle("Recommanderlab Benchmark (10 % subset)")
 
+
 end.time <- Sys.time()  ### A SUPPRIMER
 end.time - start.time   ### A SUPPRIMER
 # Facultatif : affichage graphique
 plot_result1
 gc(verbose = FALSE)     # Free memory
-
+save.image(file = "EKR-MovieLens.RData")
 ###############################################
 #    FINE-TUNING SELECTED TRAINING METHODS    #
 ###############################################
