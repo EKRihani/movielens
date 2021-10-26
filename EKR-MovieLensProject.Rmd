@@ -27,10 +27,11 @@ This project will be articulated around the use of the *recommenderlab* package,
 We'll first briefly introduce the recommenderlab library and its different recommendation systems, then we'll evaluate their respective performances, both in computing time and accuracy, and we'll then optimize the tuning parameters of our best models before using the best model against our validation set.  
 
 ## 2.1 Preparing data for the recommenderlab package
-The recommenderlab package uses several specific data formats (*realRatingMatrix*)
+The recommenderlab package uses several specific data formats, all based on a single sparse (?) matrix, where the ratings (binary or numeric) are located at the intersection of the user row (*userId*) row (?) and the rated object (*movieId*) column. Since our rating are numeric, this study will use the *realRatingMatrix* format.  
+Since recommenderlab only uses ratings, one limitation of this study is that it will not use some potentially useful informations such as the moment of the rating or the year or gender of the movie to improve the accuracy of the analysis.  
+The first step of the data preparation involves the transformation of our dataset into a matrix
 
-
-# 2.2 Comparing the performance of the different models
+## 2.2 Comparing the performance of the different models
 Several metrics can be used to evaluate the accuracy of the prediction, such as the Mean Average Error (MAE, consistent with the data units), the Mean Square Error (MSE, penalizes large errors) and the Root Mean Square Error (RMSE, penalizes large errors **and** is consistent with the data units). The metric used in this study to evaluate the accuracy of the prediction is the root-mean-squared error (RMSE), given by : $$\sqrt{ \frac{1}{N} \sum_{m,u}\left(\hat{y}_{m,u} -  y_{m,u}\right)^{2}}$$ With N the number of ratings, $\hat{y}_{m,u}$ the rating (for the movie m, by the user u) that is predicted by the model built with the training set and $y_{m,u}$ the actual rating of the testing set. The lower the RMSE, the more accurate the model.  
 Recommenderlab conveniently provides a *calcPredictionAccuracy* function that computes the MAE, MSE, RMSE.
 

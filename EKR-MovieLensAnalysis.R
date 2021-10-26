@@ -19,15 +19,15 @@ library(data.table)
 dl <- tempfile()
 #download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl) # FICHIER A DISTANCE
 
-#dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
-#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
-#                 col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
+ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+                 col.names = c("userId", "movieId", "rating", "timestamp"))
+movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
 ##### DEBUT A ENLEVER ####
-dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
-ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
+#dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
+#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
+#movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
 
 #dl <- "~/projects/movielens/ml-latest-small.zip"   # /!\ MICRO dataset
 #ratings <- fread(text = gsub(",", "\t", readLines(unzip(dl, "ml-latest-small/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
@@ -110,8 +110,10 @@ rm(total_dataset)    # Free some memory
 
 #Save the edx and validation datasets to an external file (will be used later for our validation set final preparation)
 save(edx,validation, file = "edxval.RData")
-
 #load(file = "edxval.RData")
+# Free some memory
+rm(validation)    # Won't be needed until the final RMSE computation
+gc(verbose = FALSE)     # Free as much memory as possible
 
 ## Prepare training dataset : adapt the "edx" set for a recommenderlab analysis
 # 10-star scale + integer conversion (uses less RAM = less swapping = improved performance)
@@ -120,11 +122,10 @@ save(edx,validation, file = "edxval.RData")
 #edx$movieId <- as.integer(edx$movieId)
 #edx$userId <- as.integer(edx$userId)
 
-
 # Convert data set to matrix, then realRatingMatrix (class used by recommenderlab)
-#gc(verbose = FALSE)     # Free as much memory as possible
+
 edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
-edx_rrm <- as(edx, "realRatingMatrix")
+edx_rrm <- as(edx_rrm, "realRatingMatrix")
 gc(verbose = FALSE)     # Free memory
 rm(edx)  # Free memory
 
