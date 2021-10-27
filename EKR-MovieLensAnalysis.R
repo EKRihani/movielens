@@ -123,12 +123,13 @@ gc(verbose = FALSE)     # Free as much memory as possible
 #edx$userId <- as.integer(edx$userId)
 
 # Convert data set to matrix, then realRatingMatrix (class used by recommenderlab)
-
 edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
 edx_rrm <- as(edx_rrm, "realRatingMatrix")
 gc(verbose = FALSE)     # Free memory
 rm(edx)  # Free memory
-
+##### A SUPPRIMER####
+#save(edx_rrm, file = "edxRRM.RData")
+load(file = "edxRRM.RData")
 #######################################
 #    BENCHMARKING TRAINING METHODS    #
 #######################################
@@ -163,15 +164,17 @@ bench <- function(model){
 # Define report function
 run_bench <- function(model_list){
    result <- as.data.frame(t(sapply(X = model_list, FUN = bench)))
-   colnames(result) <- c("RMSE", "time")  # Add column names
+   result <- cbind(model_list,result)  # Add model column
+   colnames(result) <- c("model", "RMSE", "time")  # Add column names
    result$RMSE <- as.numeric(result$RMSE) # Convert factors to numeric values
    result$time <- as.numeric(result$time)
-   result}
+   result
+}
 
 # Define plot function
 plot_bench <- function(benchresult){
    benchresult %>%
-      ggplot(aes(x = time, y = RMSE, label = row.names(.))) +
+      ggplot(aes(x = time, y = RMSE, label = model)) +
          geom_point() +
          scale_x_continuous(limits = c(0,NA)) +
          geom_text_repel() +  # Add labels
@@ -182,34 +185,60 @@ plot_bench <- function(benchresult){
 # Define tested models and dataset sizes (no IBCF)
 list_methods1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF")
 list_methods2 <- c("POPULAR", "LIBMF", "SVD", "UBCF")
-list_methods3 <- c("POPULAR","LIBMF", "SVD")
-train_size1 <- 0.005
-train_size2 <- 0.02
-train_size3 <- 0.1
+#list_methods3 <- c("POPULAR","LIBMF", "SVD")
+train_size1 <- 0.005    # 0.5% subset, for time/RMSE
+train_size2 <- 0.01     # 1% subset, time only
+train_size3 <- 0.02     # 2% subset, for time/RMSE
+train_size4 <- 0.05     # 5% subset, time only
+train_size5 <- 0.1      # 10% subset, for time/RMSE
 
 start.time <- Sys.time()  ### A SUPPRIMER
-# Build the 3 sets, run the 3 benchmarks, create the 3 plots
+
+# Build the 3 sets, for the 3 time/RMSE benchmarks, create the 3 time/RMSE plots
 dataset_build(train_size1)
-benchmark_result1 <- run_bench(list_methods1)
-plot_result1 <- plot_bench(benchmark_result1) +
+benchmark_result1 <- run_bench(list_methods1)   # liste 1
+benchmark_result1$size <- train_size1  # Add train size
+plot_time_rmse1 <- plot_bench(benchmark_result1) +
    ggtitle("Recommanderlab Benchmark (0.5 % subset)")
-dataset_build(train_size2)
-benchmark_result2 <- run_bench(list_methods2)
-plot_result2 <- plot_bench(benchmark_result2) +
-   ggtitle("Recommanderlab Benchmark (2 % subset)")
 
 dataset_build(train_size3)
-benchmark_result3 <- run_bench(list_methods2)
-plot_result3 <- plot_bench(benchmark_result3) +
+benchmark_result3 <- run_bench(list_methods2)   # liste 2
+benchmark_result3$size <- train_size3  # Add train size
+
+plot_time_rmse2 <- plot_bench(benchmark_result3) +
+   ggtitle("Recommanderlab Benchmark (2 % subset)")
+
+dataset_build(train_size5)
+benchmark_result5 <- run_bench(list_methods2)  # liste 2
+benchmark_result5$size <- train_size5  # Add train size
+plot_time_rmse3 <- plot_bench(benchmark_result5) +
    ggtitle("Recommanderlab Benchmark (10 % subset)")
 
+# Build the 2 time-only sets, run the time-only benchmarks
+dataset_build(train_size2)
+benchmark_result2 <- run_bench(list_methods2)  # liste 2
+benchmark_result2$size <- train_size2  # Add train size
+dataset_build(train_size4)
+benchmark_result4 <- run_bench(list_methods2)  # liste 2
+benchmark_result4$size <- train_size4  # Add train size
+
+# Add train size to all results
+time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, benchmark_result4, benchmark_result5) %>%
+   filter(model %in% c("SVD", "POPULAR", "LIBMF", "UBCF")) %>%
+   arrange(.,model)
+
+time_plot <- time_result %>%
+   ggplot(aes(x = size, y = time, color = model)) +
+   geom_point()
 
 end.time <- Sys.time()  ### A SUPPRIMER
 end.time - start.time   ### A SUPPRIMER
 # Facultatif : affichage graphique
-plot_result1
+plot_time_rmse3
 gc(verbose = FALSE)     # Free memory
-save.image(file = "EKR-MovieLens.RData")
+
+#save.image(file = "EKR-MovieLens.RData")
+load(file = "EKR-MovieLens.RData")
 ###############################################
 #    FINE-TUNING SELECTED TRAINING METHODS    #
 ###############################################
@@ -304,7 +333,7 @@ save(edx_rrm, validation_rrm, file = "edxval_rrm.RData")
 # Mean rating for each movie
 #hist(colMeans(train))
 
-predictions <- predict(recommend, validation_rrm, type = "ratingMatrix") #type = realRatingMatrix ?
+predictions <- predict(recommend, validation_rrm, type = "ratingMatrix")
 accuracy <- calcPredictionAccuracy(validation_rrm, predictions)
 gc(verbose = FALSE)
 
