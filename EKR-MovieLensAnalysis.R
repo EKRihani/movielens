@@ -194,47 +194,63 @@ train_size5 <- 0.1      # 10% subset, for time/RMSE
 
 start.time <- Sys.time()  ### A SUPPRIMER
 
-# Build the 3 sets, for the 3 time/RMSE benchmarks, create the 3 time/RMSE plots
+# Build the sets, run the benchmarks
 dataset_build(train_size1)
 benchmark_result1 <- run_bench(list_methods1)   # liste 1
 benchmark_result1$size <- train_size1  # Add train size
-plot_time_rmse1 <- plot_bench(benchmark_result1) +
-   ggtitle("Recommanderlab Benchmark (0.5 % subset)")
-
-dataset_build(train_size3)
-benchmark_result3 <- run_bench(list_methods2)   # liste 2
-benchmark_result3$size <- train_size3  # Add train size
-
-plot_time_rmse2 <- plot_bench(benchmark_result3) +
-   ggtitle("Recommanderlab Benchmark (2 % subset)")
-
-dataset_build(train_size5)
-benchmark_result5 <- run_bench(list_methods2)  # liste 2
-benchmark_result5$size <- train_size5  # Add train size
-plot_time_rmse3 <- plot_bench(benchmark_result5) +
-   ggtitle("Recommanderlab Benchmark (10 % subset)")
-
-# Build the 2 time-only sets, run the time-only benchmarks
 dataset_build(train_size2)
 benchmark_result2 <- run_bench(list_methods2)  # liste 2
 benchmark_result2$size <- train_size2  # Add train size
+dataset_build(train_size3)
+benchmark_result3 <- run_bench(list_methods2)   # liste 2
+benchmark_result3$size <- train_size3  # Add train size
 dataset_build(train_size4)
 benchmark_result4 <- run_bench(list_methods2)  # liste 2
 benchmark_result4$size <- train_size4  # Add train size
+dataset_build(train_size5)
+benchmark_result5 <- run_bench(list_methods2)  # liste 2
+benchmark_result5$size <- train_size5  # Add train size
 
-# Add train size to all results
+# Create the 3 time/RMSE plots
+plot_time_rmse1 <- plot_bench(benchmark_result1) +
+   ggtitle("Recommanderlab Benchmark (0.5 % subset)")
+plot_time_rmse2 <- plot_bench(benchmark_result3) +
+   ggtitle("Recommanderlab Benchmark (2 % subset)")
+plot_time_rmse3 <- plot_bench(benchmark_result5) +
+   ggtitle("Recommanderlab Benchmark (10 % subset)")
+
+# Build the size vs time/rmse base for our best models
 time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, benchmark_result4, benchmark_result5) %>%
    filter(model %in% c("SVD", "POPULAR", "LIBMF", "UBCF")) %>%
    arrange(.,model)
 
-time_plot <- time_result %>%
+plot_time_size1 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
-   geom_point()
+   geom_point() +
+   geom_line()
+
+plot_time_size2 <- time_result %>%
+   ggplot(aes(x = size, y = time, color = model)) +
+   geom_point() +
+   geom_line() +
+   scale_y_sqrt()
+
+plot_time_size3 <- time_result %>%
+   filter(model != "UBCF") %>%
+   ggplot(aes(x = size, y = time, color = model)) +
+   geom_point() +
+   geom_line()
+
+plot_rmse_size <- time_result %>%
+   ggplot(aes(x = size, y = RMSE, color = model)) +
+   geom_point() +
+   geom_line()
 
 end.time <- Sys.time()  ### A SUPPRIMER
 end.time - start.time   ### A SUPPRIMER
 # Facultatif : affichage graphique
-plot_time_rmse3
+plot_time_size
+plot_rmse_size
 gc(verbose = FALSE)     # Free memory
 
 #save.image(file = "EKR-MovieLens.RData")
