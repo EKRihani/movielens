@@ -185,12 +185,14 @@ plot_bench <- function(benchresult){
 # Define tested models and dataset sizes (no IBCF)
 list_methods1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF")
 list_methods2 <- c("POPULAR", "LIBMF", "SVD", "UBCF")
-#list_methods3 <- c("POPULAR","LIBMF", "SVD")
-train_size1 <- 0.005    # 0.5% subset, for time/RMSE
-train_size2 <- 0.01     # 1% subset, time only
-train_size3 <- 0.02     # 2% subset, for time/RMSE
-train_size4 <- 0.05     # 5% subset, time only
-train_size5 <- 0.1      # 10% subset, for time/RMSE
+list_methods3 <- c("POPULAR","LIBMF", "SVD")
+train_size1 <- 0.005    # 0.5% subset, for time/RMSE, time, RMSE
+train_size2 <- 0.01     # 1% subset, for time, RMSE
+train_size3 <- 0.02     # 2% subset, for time/RMSE, time, RMSE
+train_size4 <- 0.05     # 5% subset, for time, RMSE
+train_size5 <- 0.1      # 10% subset, for time/RMSE, time, RMSE
+train_size6 <- 0.2      # 20% subset, for RMSE only
+train_size7 <- 0.5      # 50% subset, for RMSE only
 
 start.time <- Sys.time()  ### A SUPPRIMER
 
@@ -210,6 +212,12 @@ benchmark_result4$size <- train_size4  # Add train size
 dataset_build(train_size5)
 benchmark_result5 <- run_bench(list_methods2)  # liste 2
 benchmark_result5$size <- train_size5  # Add train size
+dataset_build(train_size6)
+benchmark_result6 <- run_bench(list_methods3)  # liste 3
+benchmark_result6$size <- train_size6  # Add train size
+dataset_build(train_size7)
+benchmark_result7 <- run_bench(list_methods3)  # liste 3
+benchmark_result7$size <- train_size7  # Add train size
 
 # Create the 3 time/RMSE plots
 plot_time_rmse1 <- plot_bench(benchmark_result1) +
@@ -241,17 +249,21 @@ plot_time_size3 <- time_result %>%
    geom_point() +
    geom_line()
 
-plot_rmse_size <- time_result %>%
-   ggplot(aes(x = size, y = RMSE, color = model)) +
-   geom_point() +
-   geom_line()
-
 end.time <- Sys.time()  ### A SUPPRIMER
 end.time - start.time   ### A SUPPRIMER
 # Facultatif : affichage graphique
 plot_time_size
 plot_rmse_size
 gc(verbose = FALSE)     # Free memory
+
+rmse_result <- rbind(time_result, benchmark_result6, benchmark_result7) %>%
+   filter(model %in% c("SVD", "POPULAR", "LIBMF")) %>%
+   arrange(.,model)
+
+plot_rmse_size <- rmse_result %>%
+   ggplot(aes(x = size, y = RMSE, color = model)) +
+   geom_point() +
+   geom_line()
 
 #save.image(file = "EKR-MovieLens.RData")
 load(file = "EKR-MovieLens.RData")
