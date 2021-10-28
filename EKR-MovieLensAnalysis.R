@@ -254,7 +254,7 @@ plot_time_size2 <- time_result %>%
    geom_line() +
    scale_y_sqrt()    # UBCF behavior looks quadratic
 plot_time_size3 <- time_result %>%
-   filter(model != "UBCF") %>%   # Others behavior looklinear
+   filter(model != "UBCF") %>%   # Others behaviors look linear
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
    geom_line()
@@ -268,8 +268,6 @@ plot_rmse_size <- rmse_result %>%
    geom_point() +
    geom_line()
 plot_rmse_size
-save.image(file = "EKR-MovieLens.RData")
-load(file = "EKR-MovieLens.RData")
 
 ###############################################
 #    FINE-TUNING SELECTED TRAINING METHODS    #
@@ -277,6 +275,8 @@ load(file = "EKR-MovieLens.RData")
 
 # Build the training dataset with the most representative size (20%)
 dataset_build(0.2)
+save.image(file = "EKR-MovieLens.RData")
+load(file = "EKR-MovieLens.RData")
 
 gc(verbose = FALSE)     # Free memory
 start.time <- Sys.time()  ### A SUPPRIMER
