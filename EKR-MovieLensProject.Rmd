@@ -8,6 +8,8 @@ output: pdf_document
 ```{r setup, include=FALSE}
 load("EKR-MovieLens.RData")
 knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(rmarkdown)
 ```
 
 # 1. Overview
@@ -51,18 +53,18 @@ The Popular, SVD and LIBMF are clear winners, being all in the "fast and accurat
 The ALS seems to be quite slow, but accurate. More suprisingly, the ALS_implicit model performs very poorly (being both the slowest and most inaccurate model), despite being based on an alternating least squares strategy like the regular ALS model.  
 ```{r echo=FALSE}
 #par(mar = c(4, 4, .2, .1))
-plot(plot_time_rmse2, pch = 19)
-plot(plot_time_rmse3, pch = 17)
+plot(plot_time_rmse2, pch = 19 + theme_bw())
+plot(plot_time_rmse3, pch = 17 + theme_bw())
 ```
 Bigger datasets seem to confirm the respective places of the SVD, UBCF, LIBMF and Popular methods.  
 
 ```{r echo=FALSE}
 #par(mar = c(4, 4, .2, .1))
-plot(plot_time_size1, pch = 19)
-plot(plot_time_size2, pch = 17)
-plot(plot_time_size3, pch = 17)
+plot(plot_time_size1, pch = 19 + theme_bw())
+plot(plot_time_size2, pch = 17 + theme_bw())
+plot(plot_time_size3, pch = 17 + theme_bw())
 ```  
-The computing time vs dataset size scatterplot seems to show a lower computing time for SVD, Popular and LIMBF models, while the UBCF model appears to be considerably slower. Furthermore, the computing time of this model seems to exhibit a quadratic behaviour, whereas the others seem to be linear.  
+The computing time vs dataset size scatterplot seems to show a lower computing time for SVD, Popular and LIBMF models, while the UBCF model appears to be considerably slower. Furthermore, the computing time of this model seems to exhibit a quadratic behaviour, whereas the others seem to be linear.  
 The UBCF model, while quite accurate, will probably be too slow for this study.   
 We will thus select the LIBMF, POPULAR AND SVD models and will tune them to improve their performance.  
 
@@ -71,12 +73,13 @@ We will thus select the LIBMF, POPULAR AND SVD models and will tune them to impr
 In order to tune our models, we first have to chose a relevant-sized training set.  
 
 ```{r echo=FALSE}
-plot(plot_rmse_size)
-```  
-According to the RMSE vs size scatterplot, our 3 selected models seem to show stability for $size \ge 0.2$.  
-Two of these models already show adequate performance out of the box, with $RMSE_{pop} =$ 
-<!-- [INSERER BMR9-RMSE ICI] --> in $t_{pop} =$ <!-- [INSERER BMR9-TEMPS ICI] --> s
-and $RMSE_{limbf} =$ <!-- [INSERER BMR9-RMSE ICI] --> in $_{limbf} =$ <!-- [INSERER BMR9-TEMPS ICI] --> s. Before tuning, SVD seems to lag behind, both in RMSE (<!-- [INSERER BMR9-RMSE ICI] -->) and time (<!-- [INSERER BMR9-RMSE ICI] --> s) performance.
+plot(plot_rmse_size + theme_bw())
+```    
+
+According to the RMSE vs size scatterplot, our 3 selected models seem to show stability for $size \ge 0.20$.  
+Two of these models already seem to show adequate performance out of the box, with $RMSE_{pop} =$ 
+`r benchmark_result9["POPULAR",]$RMSE` in $t_{pop} =$ `r benchmark_result9["POPULAR",]$time` s
+and $RMSE_{libmf} =$ `r benchmark_result9["LIBMF",]$RMSE` in $t_{libmf} =$ `r benchmark_result9["LIBMF",]$time` s. Before tuning, SVD seems to lag behind, both in RMSE (`r benchmark_result9["SVD",]$RMSE`) and time (`r benchmark_result9["SVD",]$time` s) performance.
 
 <!-- PARALLELISATION ? -->
 ### 3.2.2. Tuning the POPULAR model

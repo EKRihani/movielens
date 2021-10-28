@@ -230,6 +230,7 @@ dataset_build(train_size9)
 benchmark_result9 <- run_bench(list_methods3)
 benchmark_result9$size <- train_size9
 
+
 # Create the 3 time/RMSE plots
 plot_time_rmse1 <- plot_bench(benchmark_result1) +
    ggtitle("Recommanderlab Benchmark (0.5 % subset)")
@@ -238,35 +239,50 @@ plot_time_rmse2 <- plot_bench(benchmark_result3) +
 plot_time_rmse3 <- plot_bench(benchmark_result5) +
    ggtitle("Recommanderlab Benchmark (10 % subset)")
 
-# Build the size vs time/rmse base for our 4 best models
+# Build the size vs time/rmse base for our best models
 time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, benchmark_result4, benchmark_result5) %>%
    filter(model %in% c("SVD", "POPULAR", "LIBMF", "UBCF")) %>%
    arrange(.,model)
 
-# Plot the time vs size for our 4 best models
 plot_time_size1 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
-   geom_line()
+   geom_line() +
+   theme_bw()
+
 plot_time_size2 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
    geom_line() +
-   scale_y_sqrt()    # UBCF behavior looks quadratic
+   scale_y_sqrt() +
+   theme_bw()
+
 plot_time_size3 <- time_result %>%
-   filter(model != "UBCF") %>%   # Others behaviors look linear
+   filter(model != "UBCF") %>%
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
-   geom_line()
+   geom_line() +
+   theme_bw()
 
-# Agregate and plot RMSE vs size for our 3 best models
-rmse_result <- rbind(time_result, benchmark_result6, benchmark_result7, benchmark_result8, benchmark_result9) %>%
+end.time <- Sys.time()  ### A SUPPRIMER
+end.time - start.time   ### A SUPPRIMER
+# Facultatif : affichage graphique
+
+gc(verbose = FALSE)     # Free memory
+
+rmse_result <- rbind(time_result, benchmark_result6, benchmark_result7) %>%
    filter(model %in% c("SVD", "POPULAR", "LIBMF")) %>%
    arrange(.,model)
+
 plot_rmse_size <- rmse_result %>%
    ggplot(aes(x = size, y = RMSE, color = model)) +
    geom_point() +
-   geom_line()
+   geom_line() +
+   geom_hline(yintercept = 0.9, linetype = "dotted", color = "darkred", alpha = 0.5) + # Minimal objective
+   geom_hline(yintercept = 0.865, linetype = "dotted", color = "darkgreen", alpha = 0.5) +  # Optimal objective 
+   geom_vline(xintercept = 0.2, linetype = "dashed", color = "royalblue4", alpha = 0.7) +  # Optimal dataset size
+   theme_bw()
+plot_time_size2
 plot_rmse_size
 
 ###############################################
