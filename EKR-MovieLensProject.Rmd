@@ -42,27 +42,54 @@ Section that explains the process and techniques used, including data cleaning, 
 
 ## 3.1. Performance of the different models
 We can create a scatterplot of the RMSE vs compute time of our different models.  
+
 ```{r echo=FALSE}
-plot(plot_result1)
-```
+plot(plot_time_rmse1)
+```  
 As one can expect, the random model is among the fastest, but performs quite poorly in termes of accuracy.  
 The Popular, SVD and LIBMF are clear winners, being all in the "fast and accurate" quadrant of this plot. UBCF appears to be a reasonnable option, too. SVDF's accuracy is on par with SVD, but SVDF seems to be much slower.  
-The ALS seems to be quite slow, but accurate. More suprisingly, the ALS_implicit model performs very poorly (being both the slowest and most inaccurate model), despite being based on an alternating least squares strategy like the regular ALS model.
+The ALS seems to be quite slow, but accurate. More suprisingly, the ALS_implicit model performs very poorly (being both the slowest and most inaccurate model), despite being based on an alternating least squares strategy like the regular ALS model.  
 ```{r echo=FALSE}
-par(mar = c(4, 4, .2, .1))
-plot(plot_result2, pch = 19)
-plot(plot_result3, pch = 17)
+#par(mar = c(4, 4, .2, .1))
+plot(plot_time_rmse2, pch = 19)
+plot(plot_time_rmse3, pch = 17)
 ```
-Bigger datasets seem to confirm the respective places of the SVD, UBCF, LIBMF and Popular methods.
+Bigger datasets seem to confirm the respective places of the SVD, UBCF, LIBMF and Popular methods.  
 
-#TIME VS SIZE PLOT
-The computing time vs dataset size scatterplot seems to show a lower computing time for SVD, Popular and LIMBF models, whereas the UBCF model seems considerably slower. Furthermore, the computing time of this model seems to exhibit a quadratic behaviour, whereas the others seem to be linear.  
-The UBCF model, while quite accurate, will probably be too slow for this study.
-
-#RMSE VS SIZE PLOT
-##### A FAIRE + TROUVER STABILISATION #####
+```{r echo=FALSE}
+#par(mar = c(4, 4, .2, .1))
+plot(plot_time_size1, pch = 19)
+plot(plot_time_size2, pch = 17)
+plot(plot_time_size3, pch = 17)
+```  
+The computing time vs dataset size scatterplot seems to show a lower computing time for SVD, Popular and LIMBF models, while the UBCF model appears to be considerably slower. Furthermore, the computing time of this model seems to exhibit a quadratic behaviour, whereas the others seem to be linear.  
+The UBCF model, while quite accurate, will probably be too slow for this study.   
+We will thus select the LIBMF, POPULAR AND SVD models and will tune them to improve their performance.  
 
 ## 3.2. Tuning the models
+### 3.2.1. Selecting the best dataset size
+In order to tune our models, we first have to chose a relevant-sized training set.  
+
+```{r echo=FALSE}
+plot(plot_rmse_size)
+```  
+According to the RMSE vs size scatterplot, our 3 selected models seem to show stability for $size \ge 0.2$.  
+Two of these models already show adequate performance out of the box, with $RMSE_{pop} =$ 
+<!-- [INSERER BMR9-RMSE ICI] --> in $t_{pop} =$ <!-- [INSERER BMR9-TEMPS ICI] --> s
+and $RMSE_{limbf} =$ <!-- [INSERER BMR9-RMSE ICI] --> in $_{limbf} =$ <!-- [INSERER BMR9-TEMPS ICI] --> s. Before tuning, SVD seems to lag behind, both in RMSE (<!-- [INSERER BMR9-RMSE ICI] -->) and time (<!-- [INSERER BMR9-RMSE ICI] --> s) performance.
+
+<!-- PARALLELISATION ? -->
+### 3.2.2. Tuning the POPULAR model
+The POPULAR method only has one parameter : *normalize*, which can be set on *center* or *Z-score*. The *center* normalization uses the mean of the ratings, whereas the *Z-score* normalization goes further by dividing by the standard deviation, which allows this normalization method to better handle outliers.  
+
+```{r echo=FALSE}
+# plot(plot_popular_normalize)
+```
+Our scatterplot shows...
+
+### 3.2.3. Tuning the SVD model
+
+### 3.2.3. Tuning the LIBMF model
 
 ## 3.3. Evaluation against the *validation* dataset
 
