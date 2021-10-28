@@ -128,11 +128,16 @@ edx_rrm <- as(edx_rrm, "realRatingMatrix")
 gc(verbose = FALSE)     # Free memory
 rm(edx)  # Free memory
 ##### A SUPPRIMER####
-#save(edx_rrm, file = "edxRRM.RData")
+save(edx_rrm, file = "edxRRM.RData")
 load(file = "edxRRM.RData")
-#######################################
-#    BENCHMARKING TRAINING METHODS    #
-#######################################
+
+
+###########################################
+#    BENCHMARKING THE TRAINING METHODS    #
+###########################################
+
+
+
 set.seed(1234, sample.kind="Rounding") # if using R 3.5 or earlier, use `set.seed(1234)`
 
 # Create empty objects for our training and data sets
@@ -192,32 +197,38 @@ train_size3 <- 0.02     # 2% subset, for time/RMSE, time, RMSE
 train_size4 <- 0.05     # 5% subset, for time, RMSE
 train_size5 <- 0.1      # 10% subset, for time/RMSE, time, RMSE
 train_size6 <- 0.2      # 20% subset, for RMSE only
-train_size7 <- 0.5      # 50% subset, for RMSE only
-
-start.time <- Sys.time()  ### A SUPPRIMER
+train_size7 <- 0.4      # 40% subset, for RMSE only
+train_size8 <- 0.6      # 60% subset, for RMSE only
+train_size9 <- 1      # 100% subset, for RMSE only
 
 # Build the sets, run the benchmarks
 dataset_build(train_size1)
-benchmark_result1 <- run_bench(list_methods1)   # liste 1
-benchmark_result1$size <- train_size1  # Add train size
+benchmark_result1 <- run_bench(list_methods1)
+benchmark_result1$size <- train_size1  # Add training set size
 dataset_build(train_size2)
-benchmark_result2 <- run_bench(list_methods2)  # liste 2
-benchmark_result2$size <- train_size2  # Add train size
+benchmark_result2 <- run_bench(list_methods2)
+benchmark_result2$size <- train_size2
 dataset_build(train_size3)
-benchmark_result3 <- run_bench(list_methods2)   # liste 2
-benchmark_result3$size <- train_size3  # Add train size
+benchmark_result3 <- run_bench(list_methods2)
+benchmark_result3$size <- train_size3
 dataset_build(train_size4)
-benchmark_result4 <- run_bench(list_methods2)  # liste 2
-benchmark_result4$size <- train_size4  # Add train size
+benchmark_result4 <- run_bench(list_methods2)
+benchmark_result4$size <- train_size4
 dataset_build(train_size5)
-benchmark_result5 <- run_bench(list_methods2)  # liste 2
-benchmark_result5$size <- train_size5  # Add train size
+benchmark_result5 <- run_bench(list_methods2)
+benchmark_result5$size <- train_size5
 dataset_build(train_size6)
-benchmark_result6 <- run_bench(list_methods3)  # liste 3
-benchmark_result6$size <- train_size6  # Add train size
+benchmark_result6 <- run_bench(list_methods3)
+benchmark_result6$size <- train_size6
 dataset_build(train_size7)
-benchmark_result7 <- run_bench(list_methods3)  # liste 3
-benchmark_result7$size <- train_size7  # Add train size
+benchmark_result7 <- run_bench(list_methods3)
+benchmark_result7$size <- train_size7
+dataset_build(train_size8)
+benchmark_result8 <- run_bench(list_methods3)
+benchmark_result8$size <- train_size8
+dataset_build(train_size9)
+benchmark_result9 <- run_bench(list_methods3)
+benchmark_result9$size <- train_size9
 
 # Create the 3 time/RMSE plots
 plot_time_rmse1 <- plot_bench(benchmark_result1) +
@@ -227,49 +238,50 @@ plot_time_rmse2 <- plot_bench(benchmark_result3) +
 plot_time_rmse3 <- plot_bench(benchmark_result5) +
    ggtitle("Recommanderlab Benchmark (10 % subset)")
 
-# Build the size vs time/rmse base for our best models
+# Build the size vs time/rmse base for our 4 best models
 time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, benchmark_result4, benchmark_result5) %>%
    filter(model %in% c("SVD", "POPULAR", "LIBMF", "UBCF")) %>%
    arrange(.,model)
 
+# Plot the time vs size for our 4 best models
 plot_time_size1 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
    geom_line()
-
 plot_time_size2 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
    geom_line() +
-   scale_y_sqrt()
-
+   scale_y_sqrt()    # UBCF behavior looks quadratic
 plot_time_size3 <- time_result %>%
-   filter(model != "UBCF") %>%
+   filter(model != "UBCF") %>%   # Others behavior looklinear
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
    geom_line()
 
-end.time <- Sys.time()  ### A SUPPRIMER
-end.time - start.time   ### A SUPPRIMER
-# Facultatif : affichage graphique
-plot_time_size
-plot_rmse_size
-gc(verbose = FALSE)     # Free memory
-
-rmse_result <- rbind(time_result, benchmark_result6, benchmark_result7) %>%
+# Agregate and plot RMSE vs size for our 3 best models
+rmse_result <- rbind(time_result, benchmark_result6, benchmark_result7, benchmark_result8, benchmark_result9) %>%
    filter(model %in% c("SVD", "POPULAR", "LIBMF")) %>%
    arrange(.,model)
-
 plot_rmse_size <- rmse_result %>%
    ggplot(aes(x = size, y = RMSE, color = model)) +
    geom_point() +
    geom_line()
-
-#save.image(file = "EKR-MovieLens.RData")
+plot_rmse_size
+save.image(file = "EKR-MovieLens.RData")
 load(file = "EKR-MovieLens.RData")
+
 ###############################################
 #    FINE-TUNING SELECTED TRAINING METHODS    #
 ###############################################
+
+# Build the training dataset with the most representative size (20%)
+dataset_build(0.2)
+
+gc(verbose = FALSE)     # Free memory
+start.time <- Sys.time()  ### A SUPPRIMER
+end.time <- Sys.time()  ### A SUPPRIMER
+end.time - start.time   ### A SUPPRIMER
 
 # Fitting function (RMSE vs time) for each model and parameters
 fitting <- function(model, config){
