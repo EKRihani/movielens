@@ -78,6 +78,7 @@ if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-proj
 if(!require(ggrepel)) install.packages("ggrepel", repos = "http://cran.us.r-project.org")
 if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
 if(!require(parallel)) install.packages("parallel", repos = "http://cran.us.r-project.org")
+if(!require(stringr)) install.packages("stringr", repos = "http://cran.us.r-project.org")
 
 # Load required packages/libraries
 library(reshape2)       # For acast function
@@ -85,6 +86,7 @@ library(ggplot2)        # For pretty graphics
 library(ggrepel)        # For repelled labels on graphics
 library(recommenderlab) # For data analysis
 library(parallel)       # For parSapply function (multi-thread sapply)
+library(stringr)        # For parameters text (tuning stage)
 
 # Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during our Matrix/realRatingMatrix conversion...
 memory.limit(size = 50000)
@@ -199,7 +201,7 @@ train_size5 <- 0.1      # 10% subset, for time/RMSE, time, RMSE
 train_size6 <- 0.2      # 20% subset, for RMSE only
 train_size7 <- 0.4      # 40% subset, for RMSE only
 train_size8 <- 0.6      # 60% subset, for RMSE only
-train_size9 <- 1      # 100% subset, for RMSE only
+train_size9 <- 1        # 100% subset, for RMSE only
 
 # Build the sets, run the benchmarks
 dataset_build(train_size1)
@@ -300,22 +302,44 @@ end.time <- Sys.time()  ### A SUPPRIMER
 end.time - start.time   ### A SUPPRIMER
 
 # Fitting function (RMSE vs time) for each model and parameters
-fitting <- function(model, config){
+#fitting <- function(model, config){
+#   start_time <- Sys.time() # [OK]
+#   recommend <- Recommender(data = edx_rrm_train, method = model, param = config)  # Set recommendation parameters
+#   prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # [OK] Run prediction
+#   accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # [OK] Compute accuracy
+#   end_time <- Sys.time()  # [OK]
+#   running_time <- difftime(end_time, start_time, units = "secs") # [OK] Time difference, unit forced (so mins and secs aren't mixed...)
+#   rmse <- as.numeric(round(accuracy["RMSE"],4)) # [OK] Compute RMSE with 4 digits
+#   c(rmse, running_time) # [OK]
+#}
+
+##### POPULAR Method #####
+values <- c("center","Z-Score")
+parameter <- "normalize = "
+tuning <- str_c("list(", parameter, values, ")")
+
+fit_pop <- function(config){
    start_time <- Sys.time()
-   recommend <- Recommender(data = edx_rrm_train, method = model, param = config)  # Set recommendation parameters
+   parameters <- str_c("list(", config, ")") # Convert parameters in appropriate form for "param = list(parameter=value)"
+   recommend <- Recommender(data = edx_rrm_train, method = POPULAR, param = parameters)  # Set recommendation parameters
    prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # Run prediction
    accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
    end_time <- Sys.time()
    running_time <- difftime(end_time, start_time, units = "secs") # Time difference, unit forced (so mins and secs aren't mixed...)
-   rmse <- as.numeric(round(accuracy["RMSE"],4)) # Convert 10-stars RMSE to 5-stars RMSE
+   rmse <- as.numeric(round(accuracy["RMSE"],4)) # Compute RMSE with 4 digits
    c(rmse, running_time)
 }
 
-# Fitting k parameter      !!! A FINIR !!!
-parameter <- "k = 10"
-fitting("SVD", parameter)
+run_fit_pop <- function(parameter){
+   result <- as.data.frame(t(sapply(X = parameter, FUN = fit_pop)))
+   result <- cbind(model_list,result)  # Add model column
+   colnames(result) <- c("parameter", "RMSE", "time")  # Add column names
+   result$RMSE <- as.numeric(result$RMSE) # Convert factors to numeric values
+   result$time <- as.numeric(result$time)
+   result
+}
 
-plot_benchmark
+
 ##### SVD Method #####
 SVD.K <- 10 # Défaut = 10 (meilleur RMSE >= 500)
 SVD.M <- 100 # Défaut = 100 (pas d'effet???)
