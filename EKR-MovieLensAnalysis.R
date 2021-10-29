@@ -249,22 +249,19 @@ time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, be
 plot_time_size1 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
-   geom_line() +
-   theme_bw()
+   geom_line()
 
 plot_time_size2 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
    geom_line() +
-   scale_y_sqrt() +
-   theme_bw()
+   scale_y_sqrt()
 
 plot_time_size3 <- time_result %>%
    filter(model != "UBCF") %>%
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
-   geom_line() +
-   theme_bw()
+   geom_line()
 
 end.time <- Sys.time()  ### A SUPPRIMER
 end.time - start.time   ### A SUPPRIMER
@@ -282,8 +279,7 @@ plot_rmse_size <- rmse_result %>%
    geom_line() +
    geom_hline(yintercept = 0.9, linetype = "dotted", color = "darkred", alpha = 0.5) + # Minimal objective
    geom_hline(yintercept = 0.865, linetype = "dotted", color = "darkgreen", alpha = 0.5) +  # Optimal objective 
-   geom_vline(xintercept = 0.2, linetype = "dashed", color = "royalblue4", alpha = 0.7) +  # Optimal dataset size
-   theme_bw()
+   geom_vline(xintercept = 0.2, linetype = "dashed", color = "royalblue4", alpha = 0.7) # Optimal dataset size
 plot_time_size2
 plot_rmse_size
 
