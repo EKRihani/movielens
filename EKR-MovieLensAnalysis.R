@@ -182,11 +182,11 @@ run_bench <- function(model_list){
 plot_bench <- function(benchresult){
    benchresult %>%
       ggplot(aes(x = time, y = RMSE, label = model)) +
-         geom_point() +
-         scale_x_continuous(limits = c(0,NA)) +
-         geom_text_repel() +  # Add labels
-         geom_hline(yintercept = 0.9, linetype = "dashed", color = "darkred", alpha = 0.4) + # Minimal objective
-         geom_hline(yintercept = 0.865, linetype = "dashed", color = "darkgreen", alpha = 0.4)  # Optimal objective 
+      geom_point() +
+      scale_x_continuous(limits = c(0,NA)) +
+      geom_text_repel() +  # Add labels
+      geom_hline(yintercept = 0.9, linetype = "dashed", color = "darkred", alpha = 0.4) + # Minimal objective
+      geom_hline(yintercept = 0.865, linetype = "dashed", color = "darkgreen", alpha = 0.4)  # Optimal objective 
 }
 
 # Define tested models and dataset sizes (no IBCF)
@@ -249,19 +249,22 @@ time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, be
 plot_time_size1 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
-   geom_line()
+   geom_line() +
+   theme_bw()
 
 plot_time_size2 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
    geom_line() +
-   scale_y_sqrt()
+   scale_y_sqrt() +
+   theme_bw()
 
 plot_time_size3 <- time_result %>%
    filter(model != "UBCF") %>%
    ggplot(aes(x = size, y = time, color = model)) +
    geom_point() +
-   geom_line()
+   geom_line() +
+   theme_bw()
 
 end.time <- Sys.time()  ### A SUPPRIMER
 end.time - start.time   ### A SUPPRIMER
@@ -279,7 +282,8 @@ plot_rmse_size <- rmse_result %>%
    geom_line() +
    geom_hline(yintercept = 0.9, linetype = "dotted", color = "darkred", alpha = 0.5) + # Minimal objective
    geom_hline(yintercept = 0.865, linetype = "dotted", color = "darkgreen", alpha = 0.5) +  # Optimal objective 
-   geom_vline(xintercept = 0.2, linetype = "dashed", color = "royalblue4", alpha = 0.7) # Optimal dataset size
+   geom_vline(xintercept = 0.2, linetype = "dashed", color = "royalblue4", alpha = 0.7) +  # Optimal dataset size
+   theme_bw()
 plot_time_size2
 plot_rmse_size
 
@@ -312,12 +316,12 @@ end.time - start.time   ### A SUPPRIMER
 ##### POPULAR Method #####
 values <- c("center","Z-Score")
 parameter <- "normalize = "
-tuning <- str_c("list(", parameter, values, ")")
+tuning <- str_c(parameter, values)
 
 fit_pop <- function(config){
    start_time <- Sys.time()
    parameters <- str_c("list(", config, ")") # Convert parameters in appropriate form for "param = list(parameter=value)"
-   recommend <- Recommender(data = edx_rrm_train, method = POPULAR, param = parameters)  # Set recommendation parameters
+   recommend <- Recommender(data = edx_rrm_train, method = "POPULAR", param = parameters)  # Set recommendation parameters
    prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # Run prediction
    accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
    end_time <- Sys.time()
@@ -328,13 +332,13 @@ fit_pop <- function(config){
 
 run_fit_pop <- function(parameter){
    result <- as.data.frame(t(sapply(X = parameter, FUN = fit_pop)))
-   result <- cbind(model_list,result)  # Add model column
+   result <- cbind(parameter,result)  # Add model column
    colnames(result) <- c("parameter", "RMSE", "time")  # Add column names
    result$RMSE <- as.numeric(result$RMSE) # Convert factors to numeric values
    result$time <- as.numeric(result$time)
    result
 }
-
+test <- run_fit_pop(tuning)
 
 ##### SVD Method #####
 SVD.K <- 10 # Défaut = 10 (meilleur RMSE >= 500)
@@ -395,7 +399,7 @@ validation_rrm <- acast(validation, userId ~ movieId, value.var = "rating")
 validation_rrm <- as(validation, "realRatingMatrix")
 gc(verbose = FALSE)
 rm(edx, validation)     # edx/validation won't be used anymore ; keeping only edx_rrm/validation_rrm
-   
+
 ###### Enregistrement SETS #####
 save(edx_rrm, validation_rrm, file = "edxval_rrm.RData")
 #load("edxval.RData")
@@ -418,4 +422,3 @@ gc(verbose = FALSE)
 accuracy["RMSE"]/2
 
 save.image(file = "EKR-MovieLens.RData")
-
