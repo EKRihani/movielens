@@ -297,9 +297,6 @@ save.image(file = "EKR-MovieLens.RData")
 load(file = "EKR-MovieLens.RData")
 
 gc(verbose = FALSE)     # Free memory
-start.time <- Sys.time()  ### A SUPPRIMER
-end.time <- Sys.time()  ### A SUPPRIMER
-end.time - start.time   ### A SUPPRIMER
 
 # Fitting function (RMSE vs time) for each model and parameters
 #fitting <- function(model, config){
@@ -332,16 +329,23 @@ fit_pop <- function(config){
 
 run_fit_pop <- function(parameter){
    result <- as.data.frame(t(sapply(X = parameter, FUN = fit_pop)))
-   result <- cbind(parameter,result)  # Add model column
-   colnames(result) <- c("parameter", "RMSE", "time")  # Add column names
+   parameter <- str_remove (parameter, "[a-z]+ = ")
+   result <- cbind(parameter,result)  # Add parameter column
+   colnames(result) <- c("Value","RMSE", "Time (s)")  # Add column names
+   rownames(result) <- NULL # Remove row names
    result$RMSE <- as.numeric(result$RMSE) # Convert factors to numeric values
-   result$time <- as.numeric(result$time)
+   result$time <- round(as.numeric(result$time),2)
    result
 }
-test <- run_fit_pop(tuning)
+fit_pop_result <- run_fit_pop(tuning)
+
+save.image(file = "EKR-MovieLens.RData")
+start.time <- Sys.time()  ### A SUPPRIMER
+end.time <- Sys.time()  ### A SUPPRIMER
+end.time - start.time   ### A SUPPRIMER
 
 ##### SVD Method #####
-SVD.K <- 10 # Défaut = 10 (meilleur RMSE >= 500)
+SVD.K <- seq(1,500, step=10) # Défaut = 10 (meilleur RMSE >= 500)
 SVD.M <- 100 # Défaut = 100 (pas d'effet???)
 SVD.N <- "center" # center, Z-Score (pas d'effet???)
 #recommend <- Recommender(data=edx_rrm, method="SVD", param=list(k=SVD.K, maxiter=SVD.M, normalize=SVD.N))

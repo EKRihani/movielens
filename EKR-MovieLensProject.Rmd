@@ -7,6 +7,7 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 load("EKR-MovieLens.RData")
+library(knitr)
 knitr::opts_chunk$set(echo = TRUE)
 library(ggplot2)
 library(rmarkdown)
@@ -94,12 +95,10 @@ Two models already have adequate performance out of the box, with $RMSE_{pop} =$
 ### 3.2.2. Tuning the POPULAR model
 
 The POPULAR method only has one parameter : *normalize*, which can be set on *center* or *Z-score*. The *center* normalization uses the mean of the ratings, whereas the *Z-score* normalization goes further by dividing by the standard deviation, which allows this normalization method to better handle outliers.
-
 ```{r echo=FALSE}
-# plot(plot_popular_normalize)
+kable(fit_pop_result, caption = "Popular model, *normalize* parameter tuning")
 ```
-
-Our scatterplot shows...
+Our table doesn't seem to show any meaningful difference in RMSE. However, the Z-score normalization seems to be slightly faster.
 
 ### 3.2.3. Tuning the SVD model
 
