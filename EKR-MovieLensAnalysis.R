@@ -323,6 +323,7 @@ fit_pop <- function(config){
    accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
    end_time <- Sys.time()
    running_time <- difftime(end_time, start_time, units = "secs") # Time difference, unit forced (so mins and secs aren't mixed...)
+   running_time <- round(running_time,2)  # Rounding to 2 decimals
    rmse <- as.numeric(round(accuracy["RMSE"],4)) # Compute RMSE with 4 digits
    c(rmse, running_time)
 }
@@ -331,14 +332,12 @@ run_fit_pop <- function(parameter){
    result <- as.data.frame(t(sapply(X = parameter, FUN = fit_pop)))
    parameter <- str_remove (parameter, "[a-z]+ = ")
    result <- cbind(parameter,result)  # Add parameter column
-   colnames(result) <- c("Value","RMSE", "Time (s)")  # Add column names
+   colnames(result) <- c("Value","RMSE", "Time")  # Add column names
    rownames(result) <- NULL # Remove row names
-   result$RMSE <- as.numeric(result$RMSE) # Convert factors to numeric values
-   result$time <- round(as.numeric(result$time),2)
    result
 }
 fit_pop_result <- run_fit_pop(tuning)
-
+fit_pop_result
 save.image(file = "EKR-MovieLens.RData")
 start.time <- Sys.time()  ### A SUPPRIMER
 end.time <- Sys.time()  ### A SUPPRIMER
