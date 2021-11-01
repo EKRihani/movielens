@@ -113,11 +113,13 @@ rm(total_dataset)    # Free some memory
 #Save the edx and validation datasets to an external file (will be used later for our validation set final preparation)
 save(edx,validation, file = "edxval.RData")
 #load(file = "edxval.RData")
+
 # Free some memory
 rm(validation)    # Won't be needed until the final RMSE computation
 gc(verbose = FALSE)     # Free as much memory as possible
 
 ## Prepare training dataset : adapt the "edx" set for a recommenderlab analysis
+
 # 10-star scale + integer conversion (uses less RAM = less swapping = improved performance)
 #edx$rating <- edx$rating*2
 #edx$rating <- as.integer(edx$rating)
@@ -129,6 +131,7 @@ edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
 edx_rrm <- as(edx_rrm, "realRatingMatrix")
 gc(verbose = FALSE)     # Free memory
 rm(edx)  # Free memory
+
 ##### A SUPPRIMER####
 save(edx_rrm, file = "edxRRM.RData")
 load(file = "edxRRM.RData")
@@ -137,8 +140,6 @@ load(file = "edxRRM.RData")
 ###########################################
 #    BENCHMARKING THE TRAINING METHODS    #
 ###########################################
-
-
 
 set.seed(1234, sample.kind="Rounding") # if using R 3.5 or earlier, use `set.seed(1234)`
 
@@ -189,10 +190,12 @@ plot_bench <- function(benchresult){
       geom_hline(yintercept = 0.865, linetype = "dashed", color = "darkgreen", alpha = 0.4)  # Optimal objective 
 }
 
-# Define tested models and dataset sizes (no IBCF)
+# Define tested models (no IBCF)
 list_methods1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF")
 list_methods2 <- c("POPULAR", "LIBMF", "SVD", "UBCF")
 list_methods3 <- c("POPULAR","LIBMF", "SVD")
+
+# Define training datasets sizes
 train_size1 <- 0.005    # 0.5% subset, for time/RMSE, time, RMSE
 train_size2 <- 0.01     # 1% subset, for time, RMSE
 train_size3 <- 0.02     # 2% subset, for time/RMSE, time, RMSE
@@ -202,6 +205,12 @@ train_size6 <- 0.2      # 20% subset, for RMSE only
 train_size7 <- 0.4      # 40% subset, for RMSE only
 train_size8 <- 0.6      # 60% subset, for RMSE only
 train_size9 <- 1        # 100% subset, for RMSE only
+
+# Autre méthodes plus propre ???
+#methods_sizes <- data.frame(
+#   method = c(1, rep(2,4), rep(3,4)),
+#   size = c(0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 1)
+#)
 
 # Build the sets, run the benchmarks
 dataset_build(train_size1)
@@ -233,7 +242,7 @@ benchmark_result9 <- run_bench(list_methods3)
 benchmark_result9$size <- train_size9
 
 
-# Create the 3 time/RMSE plots
+# Create 3 time/RMSE plots
 plot_time_rmse1 <- plot_bench(benchmark_result1) +
    ggtitle("Recommanderlab Benchmark (0.5 % subset)")
 plot_time_rmse2 <- plot_bench(benchmark_result3) +
@@ -315,19 +324,21 @@ values <- c("center","Z-Score")
 parameter <- "normalize = "
 tuning <- str_c(parameter, values)
 
+# RMSE and time measuring function for POPULAR model
 fit_pop <- function(config){
-   start_time <- Sys.time()
+   start_time <- Sys.time()   # Start chronometer
    parameters <- str_c("list(", config, ")") # Convert parameters in appropriate form for "param = list(parameter=value)"
    recommend <- Recommender(data = edx_rrm_train, method = "POPULAR", param = parameters)  # Set recommendation parameters
    prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # Run prediction
    accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
-   end_time <- Sys.time()
+   end_time <- Sys.time()     # Stop chronometer
    running_time <- difftime(end_time, start_time, units = "secs") # Time difference, unit forced (so mins and secs aren't mixed...)
    running_time <- round(running_time,2)  # Rounding to 2 decimals
-   rmse <- as.numeric(round(accuracy["RMSE"],4)) # Compute RMSE with 4 digits
+   rmse <- round(accuracy["RMSE"],4) # Compute RMSE with 4 digits
    c(rmse, running_time)
 }
 
+# Fitting function
 run_fit_pop <- function(parameter){
    result <- as.data.frame(t(sapply(X = parameter, FUN = fit_pop)))
    parameter <- str_remove (parameter, "[a-z]+ = ")
@@ -336,18 +347,30 @@ run_fit_pop <- function(parameter){
    rownames(result) <- NULL # Remove row names
    result
 }
+
 fit_pop_result <- run_fit_pop(tuning)
 fit_pop_result
 save.image(file = "EKR-MovieLens.RData")
+
+##### LIBMF Method #####
+ramp <- c(0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20)
+libmf_d <- str_c("dim = ", 10*ramp) # default = 10
+libmf_p <- str_c("costp_l2 = ", 0.01*ramp) # Regularization parameter for user factor (default = 0.01)
+libmf_q <- str_c("costq_l2 = ", 0.01*ramp) # Regularization parameter for item factor (default = 0.01)
+libmf_t <- str_c("nthread = ", c(1, 2, 4, 8, 16, 32))   # Number of threads (default = 1)
+#recommend <- Recommender(data=edx_rrm,method="LIBMF", param=list(dim=LIBMF.D,costp_l2=LIBMF.P, costq_l2=LIBMF.Q,  nthread=LIBMF.T))
+
+
+##### SVD Method #####
+svd_k <- str_c("k = ", 10*ramp) # Rank of the SVD approximation ? (default = 10)
+svd_m <- str_c("maxiter = ", 100*ramp) # Maximum number of iterations (default = 100)
+svd_n <- str_c("normalize =", c("center", "Z-Score")) # Normalization method (default = center)
+#recommend <- Recommender(data=edx_rrm, method="SVD", param=list(k=SVD.K, maxiter=SVD.M, normalize=SVD.N))
+
 start.time <- Sys.time()  ### A SUPPRIMER
 end.time <- Sys.time()  ### A SUPPRIMER
 end.time - start.time   ### A SUPPRIMER
 
-##### SVD Method #####
-SVD.K <- seq(1,500, step=10) # Défaut = 10 (meilleur RMSE >= 500)
-SVD.M <- 100 # Défaut = 100 (pas d'effet???)
-SVD.N <- "center" # center, Z-Score (pas d'effet???)
-#recommend <- Recommender(data=edx_rrm, method="SVD", param=list(k=SVD.K, maxiter=SVD.M, normalize=SVD.N))
 
 # Set multithreading
 #n_threads <- detectCores()
@@ -357,18 +380,6 @@ SVD.N <- "center" # center, Z-Score (pas d'effet???)
 # Run multithreading
 #benchmark_result <- as.data.frame(t(parSapply(cl = cluster, X = list_methods, FUN = benchmark))) # Parallel sapply
 #stopCluster(cluster) # Stop multithread
-
-##### POPULAR Method #####
-POP.N <- "center" # center, Z-Score (Z plus rapide ?)
-#recommend <- Recommender(data=edx_rrm, method="POPULAR", param=list(normalize=POP.N))
-
-##### LIBMF Method #####
-LIBMF.D <- 100  # 10 par défaut (+++ précision)
-LIBMF.P <- 0.01   # 0.01 par défaut
-LIBMF.Q <- 0.01  #0.01 par défaut
-LIBMF.T <- 16   # 1 par défaut
-#recommend <- Recommender(data=edx_rrm,method="LIBMF", param=list(dim=LIBMF.D,costp_l2=LIBMF.P, costq_l2=LIBMF.Q,  nthread=LIBMF.T))
-#recommend <- Recommender(data=edx_rrm,method="LIBMF")
 
 #####################################################
 #    CALCULATING RMSE AGAINST THE VALIDATION SET    #
