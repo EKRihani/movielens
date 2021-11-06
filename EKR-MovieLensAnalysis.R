@@ -185,62 +185,38 @@ plot_bench <- function(benchresult){
       ggplot(aes(x = time, y = RMSE, label = model)) +
       geom_point() +
       scale_x_continuous(limits = c(0,NA)) +
-      geom_text_repel() +  # Add labels
+      geom_text_repel() +
       geom_hline(yintercept = 0.9, linetype = "dashed", color = "darkred", alpha = 0.4) + # Minimal objective
       geom_hline(yintercept = 0.865, linetype = "dashed", color = "darkgreen", alpha = 0.4)  # Optimal objective 
 }
 
 # Define tested models (no IBCF)
-list_methods1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF")
-list_methods2 <- c("POPULAR", "LIBMF", "SVD", "UBCF")
-list_methods3 <- c("POPULAR","LIBMF", "SVD")
+#list_methods_1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF")
+#list_methods_2 <- c("POPULAR", "LIBMF", "SVD", "UBCF")
+#list_methods_3 <- c("POPULAR","LIBMF", "SVD")
 
-# Define training datasets sizes
-train_size1 <- 0.005    # 0.5% subset, for time/RMSE, time, RMSE
-train_size2 <- 0.01     # 1% subset, for time, RMSE
-train_size3 <- 0.02     # 2% subset, for time/RMSE, time, RMSE
-train_size4 <- 0.05     # 5% subset, for time, RMSE
-train_size5 <- 0.1      # 10% subset, for time/RMSE, time, RMSE
-train_size6 <- 0.2      # 20% subset, for RMSE only
-train_size7 <- 0.4      # 40% subset, for RMSE only
-train_size8 <- 0.6      # 60% subset, for RMSE only
-train_size9 <- 1        # 100% subset, for RMSE only
+# LISTES LIGHT, A SUPPRIMER
+list_methods_1 <- c("RANDOM", "POPULAR","LIBMF", "SVD", "UBCF", "ALS")
+list_methods_2 <- c("RANDOM", "POPULAR", "LIBMF", "SVD")
+list_methods_3 <- c("POPULAR","LIBMF")
+###############################
 
-# Autre méthodes plus propre ???
-#methods_sizes <- data.frame(
-#   method = c(1, rep(2,4), rep(3,4)),
-#   size = c(0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 1)
-#)
+# Define the method lists and corresponding dataset sizes (for 9 runs)
+methods_sizes <- data.frame(
+   method = c(1, rep(2,4), rep(3,4)), # Method list numbers
+   size = c(0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 1)   # Training set sizes
+)
 
-# Build the sets, run the benchmarks
-dataset_build(train_size1)
-benchmark_result1 <- run_bench(list_methods1)
-benchmark_result1$size <- train_size1  # Add training set size
-dataset_build(train_size2)
-benchmark_result2 <- run_bench(list_methods2)
-benchmark_result2$size <- train_size2
-dataset_build(train_size3)
-benchmark_result3 <- run_bench(list_methods2)
-benchmark_result3$size <- train_size3
-dataset_build(train_size4)
-benchmark_result4 <- run_bench(list_methods2)
-benchmark_result4$size <- train_size4
-dataset_build(train_size5)
-benchmark_result5 <- run_bench(list_methods2)
-benchmark_result5$size <- train_size5
-dataset_build(train_size6)
-benchmark_result6 <- run_bench(list_methods3)
-benchmark_result6$size <- train_size6
-dataset_build(train_size7)
-benchmark_result7 <- run_bench(list_methods3)
-benchmark_result7$size <- train_size7
-dataset_build(train_size8)
-benchmark_result8 <- run_bench(list_methods3)
-benchmark_result8$size <- train_size8
-dataset_build(train_size9)
-benchmark_result9 <- run_bench(list_methods3)
-benchmark_result9$size <- train_size9
-
+# Build the 9 datasets, run the corresponding  benchmarks
+for (n in 1:9){
+   size <- methods_sizes$size[n] # Select the size given in the 'n' line
+   dataset_build(methods_sizes$size[n]) # Build the dataset of the selected size
+   method_name <- paste0("list_methods",methods_sizes$method[n]) # Concatenate "list_methods" and the number of the method in the [n] line
+   method <- get(method_name) # Get the actual list of methods in the method_list'n'
+   benchname <- paste0("benchmark_result", n)   # Concatenate benchmark_result with the n
+   assign(benchname, run_bench(method))  # Report the results in the benchmark_result'n' dataframe
+   assign(benchname, cbind(get(benchname), size)) # Add a size column with the selected size
+}
 
 # Create 3 time/RMSE plots
 plot_time_rmse1 <- plot_bench(benchmark_result1) +
@@ -275,10 +251,6 @@ plot_time_size3 <- time_result %>%
    geom_line() +
    theme_bw()
 
-end.time <- Sys.time()  ### A SUPPRIMER
-end.time - start.time   ### A SUPPRIMER
-# Facultatif : affichage graphique
-
 gc(verbose = FALSE)     # Free memory
 
 rmse_result <- rbind(time_result, benchmark_result6, benchmark_result7) %>%
@@ -293,12 +265,15 @@ plot_rmse_size <- rmse_result %>%
    geom_hline(yintercept = 0.865, linetype = "dotted", color = "darkgreen", alpha = 0.5) +  # Optimal objective 
    geom_vline(xintercept = 0.2, linetype = "dashed", color = "royalblue4", alpha = 0.7) +  # Optimal dataset size
    theme_bw()
+
+### Affichage graphiques (FACULTATIF) ###
 plot_time_size2
 plot_rmse_size
 
 ###############################################
 #    FINE-TUNING SELECTED TRAINING METHODS    #
 ###############################################
+gc(verbose = FALSE)     # Free memory
 
 # Build the training dataset with the most representative size (20%)
 dataset_build(0.2)
