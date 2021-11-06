@@ -346,6 +346,31 @@ start.time <- Sys.time()  ### A SUPPRIMER
 end.time <- Sys.time()  ### A SUPPRIMER
 end.time - start.time   ### A SUPPRIMER
 
+##### Méthode Alternative ####
+
+# Setting parameters and value for popular method
+model <- "POPULAR"
+pop <- data.frame(parameter = "normalize", value = c("center", "Z-score")) # Normalization parameter (default = center)
+popular_settings <- data.frame(model, pop)  # Get all POPULAR settings (parameter, values) together
+
+# Setting parameters and value for LIBMF method
+ramp <- c(0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20)
+model <- "LIBMF"
+libmf_d <- data.frame(parameter = "dim", value = c(10*ramp)) # default = 10
+libmf_p <- data.frame(parameter = "costp_l2", value = c(0.01*ramp)) # Regularization parameter for user factor (default = 0.01)
+libmf_q <- data.frame(parameter = "costq_l2", value = c(0.01*ramp)) # Regularization parameter for item factor (default = 0.01)
+libmf_t <- data.frame(parameter = "nthread", value = c(1, 2, 4, 8, 16, 32))   # Number of threads (default = 1)
+limbf_settings <- data.frame(model, rbind(libmf_d, libmf_p, libmf_q, libmf_t)) # Get all LIBMF settings (parameters, values) together
+
+# Setting parameters and value for SVD method
+model <- "SVD"
+svd_k <- data.frame(parameter = "k", value = c(10*ramp)) # Rank of the SVD approximation ? (default = 10)
+svd_m <- data.frame(parameter = "maxiter", value = c(100*ramp)) # Maximum number of iterations (default = 100)
+svd_n <- data.frame(parameter = "normalize", value = c("center", "Z-Score")) # Normalization method (default = center)
+svd_settings <- data.frame(model, rbind(svd_k, svd_m, svd_n)) # Get all SVD settings (parameters, values) together
+
+model_settings <- rbind(popular_settings, limbf_settings, svd_settings) # Get all settings together
+
 
 # Set multithreading
 #n_threads <- detectCores()
