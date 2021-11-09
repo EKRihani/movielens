@@ -340,23 +340,23 @@ fit_pop_result
 save.image(file = "EKR-MovieLens.RData")
 
 ##### LIBMF Method #####
-ramp <- c(0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20)
-libmf_d <- str_c("dim = ", 10*ramp) # default = 10
-libmf_p <- str_c("costp_l2 = ", 0.01*ramp) # Regularization parameter for user factor (default = 0.01)
-libmf_q <- str_c("costq_l2 = ", 0.01*ramp) # Regularization parameter for item factor (default = 0.01)
-libmf_t <- str_c("nthread = ", c(1, 2, 4, 8, 16, 32))   # Number of threads (default = 1)
+#ramp <- c(0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20)
+#libmf_d <- str_c("dim = ", 10*ramp) # default = 10
+#libmf_p <- str_c("costp_l2 = ", 0.01*ramp) # Regularization parameter for user factor (default = 0.01)
+#libmf_q <- str_c("costq_l2 = ", 0.01*ramp) # Regularization parameter for item factor (default = 0.01)
+#libmf_t <- str_c("nthread = ", c(1, 2, 4, 8, 16, 32))   # Number of threads (default = 1)
 #recommend <- Recommender(data=edx_rrm,method="LIBMF", param=list(dim=LIBMF.D,costp_l2=LIBMF.P, costq_l2=LIBMF.Q,  nthread=LIBMF.T))
 
 
 ##### SVD Method #####
-svd_k <- str_c("k = ", 10*ramp) # Rank of the SVD approximation ? (default = 10)
-svd_m <- str_c("maxiter = ", 100*ramp) # Maximum number of iterations (default = 100)
-svd_n <- str_c("normalize =", c("center", "Z-Score")) # Normalization method (default = center)
+#svd_k <- str_c("k = ", 10*ramp) # Rank of the SVD approximation ? (default = 10)
+#svd_m <- str_c("maxiter = ", 100*ramp) # Maximum number of iterations (default = 100)
+#svd_n <- str_c("normalize =", c("center", "Z-Score")) # Normalization method (default = center)
 #recommend <- Recommender(data=edx_rrm, method="SVD", param=list(k=SVD.K, maxiter=SVD.M, normalize=SVD.N))
 
-start.time <- Sys.time()  ### A SUPPRIMER
-end.time <- Sys.time()  ### A SUPPRIMER
-end.time - start.time   ### A SUPPRIMER
+#start.time <- Sys.time()  ### A SUPPRIMER
+#end.time <- Sys.time()  ### A SUPPRIMER
+#end.time - start.time   ### A SUPPRIMER
 
 ##### Méthode Alternative ####
 
