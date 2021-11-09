@@ -198,8 +198,8 @@ plotting_time_rmse <- function(benchresult){
 #list_methods_3 <- c("POPULAR","LIBMF", "SVD")
 
 # LISTES LIGHT, A SUPPRIMER
-list_methods_1 <- c("RANDOM", "POPULAR","LIBMF", "SVD", "UBCF", "ALS")
-list_methods_2 <- c("RANDOM", "POPULAR", "LIBMF", "SVD")
+list_methods_1 <- c("RANDOM", "POPULAR","LIBMF", "SVD", "UBCF")
+list_methods_2 <- c("RANDOM", "POPULAR", "LIBMF")
 list_methods_3 <- c("POPULAR","LIBMF")
 ###############################
 
@@ -210,7 +210,8 @@ methods_sizes <- data.frame(
 )
 
 # Build the 9 datasets, run the corresponding  benchmarks
-for (n in 1:9){
+l <- nrow(methods_sizes)
+for (n in 1:l){
    size <- methods_sizes$size[n] # Select the size given in the 'n' line
    dataset_build(methods_sizes$size[n]) # Build the dataset of the selected size
    method_name <- paste0("list_methods",methods_sizes$method[n]) # Concatenate "list_methods" and the number of the method in the [n] line
@@ -314,7 +315,7 @@ tuning <- str_c(parameter, values)
 fit_pop <- function(config){
    start_time <- Sys.time()   # Start chronometer
    parameters <- str_c("list(", config, ")") # Convert parameters in appropriate form for "param = list(parameter=value)"
-   parameters <-  eval(parse(text=parameters))  # Evaluate the result of the character string
+   parameters <-  eval(parse(text=parameters))  # Evaluate the result of the character string, to use in the recommendation parameters
    recommend <- Recommender(data = edx_rrm_train, method = "POPULAR", param = parameters)  # Set recommendation parameters
    prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # Run prediction
    accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
@@ -357,7 +358,8 @@ save.image(file = "EKR-MovieLens.RData")
 #start.time <- Sys.time()  ### A SUPPRIMER
 #end.time <- Sys.time()  ### A SUPPRIMER
 #end.time - start.time   ### A SUPPRIMER
-
+save.image(file = "EKR-MovieLens.RData")
+load(file = "EKR-MovieLens.RData")
 ##### Méthode Alternative ####
 
 # Setting parameters and value for popular method
@@ -368,10 +370,10 @@ popular_settings <- data.frame(model, pop)  # Get all POPULAR settings (paramete
 # Setting parameters and value for LIBMF method
 ramp <- c(0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20)
 model <- "LIBMF"
-libmf_d <- data.frame(parameter = "dim", value = c(10*ramp)) # default = 10
+libmf_d <- data.frame(parameter = "dim", value = c(20*ramp)) # default = 10
 libmf_p <- data.frame(parameter = "costp_l2", value = as.character(c(0.01*ramp))) # Regularization parameter for user factor (default = 0.01)
 libmf_q <- data.frame(parameter = "costq_l2", value = as.character(c(0.01*ramp))) # Regularization parameter for item factor (default = 0.01)
-libmf_t <- data.frame(parameter = "nthread", value = as.character(c(1, 2, 4, 8, 16, 32)))   # Number of threads (default = 1)
+libmf_t <- data.frame(parameter = "nthread", value = as.character(c(1, 2, 4, 8, 16, 32, 64)))   # Number of threads (default = 1)
 limbf_settings <- data.frame(model, rbind(libmf_d, libmf_p, libmf_q, libmf_t)) # Get all LIBMF settings (parameters, values) together
 
 # Setting parameters and value for SVD method
@@ -384,22 +386,26 @@ svd_settings <- data.frame(model, rbind(svd_k, svd_m, svd_n)) # Get all SVD sett
 model_settings <- rbind(popular_settings, limbf_settings, svd_settings) # Get all settings together
 
 ####### Test du fitting ######
-#### Insérer les model_settings$truc[n] dans une boucle sapply/for
-n <- 35  # Pour tester une valeur [n]
-start_time <- Sys.time()   # Start chronometer
-#parameters <- str_c("list(", config, ")") # Convert parameters in appropriate form for "param = list(parameter=value)"
-testparam <- str_c("list(", model_settings$parameter[n], " = ", model_settings$value[n], ")")
-testparam <- eval(parse(text=testparam))  # Evaluate the result of the character string
-recommend <- Recommender(data = edx_rrm_train, method = model_settings$model[n], param = testparam)  # Set recommendation parameters
-prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # Run prediction
-accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
-end_time <- Sys.time()     # Stop chronometer
-running_time <- difftime(end_time, start_time, units = "secs") # Time difference, unit forced (so mins and secs aren't mixed...)
-running_time <- round(running_time,2)  # Rounding to 2 decimals
-rmse <- as.numeric(round(accuracy["RMSE"],4)) # Compute RMSE with 4 digits
-result <- data.frame(rmse, running_time)
-cbind(model_settings[n,],result)
 
+#l <- nrow(model_settings)
+l <- 10
+test <- NULL
+for (n in 1:l){
+   start_time <- Sys.time()   # Start chronometer
+   #parameters <- str_c("list(", config, ")") # Convert parameters in appropriate form for "param = list(parameter=value)"
+   testparam <- str_c("list(", model_settings$parameter[n], " = ", model_settings$value[n], ")")
+   testparam <- eval(parse(text=testparam))  # Evaluate the result of the character string
+   recommend <- Recommender(data = edx_rrm_train, method = model_settings$model[n], param = testparam)  # Set recommendation parameters
+   prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # Run prediction
+   accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
+   end_time <- Sys.time()     # Stop chronometer
+   running_time <- difftime(end_time, start_time, units = "secs") # Time difference, unit forced (so mins and secs aren't mixed...)
+   running_time <- round(running_time,2)  # Rounding to 2 decimals
+   rmse <- as.numeric(round(accuracy["RMSE"],4)) # Compute RMSE with 4 digits
+   result <- data.frame(rmse, running_time)
+   test <- rbind(test, cbind(model_settings[n,],result))
+}
+test
 # Set multithreading
 #n_threads <- detectCores()
 #cluster <- makeCluster(n_threads)
