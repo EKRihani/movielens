@@ -183,6 +183,8 @@ run_bench <- function(model_list){
 plot_bench <- function(benchresult){
    benchresult %>%
       ggplot(aes(x = time, y = RMSE, label = model)) +
+      xlab("Time (s)") +
+      ylab("Error (RMSE)") +
       geom_point() +
       scale_x_continuous(limits = c(0,NA)) +
       geom_text_repel() +
@@ -233,12 +235,20 @@ time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, be
 
 plot_time_size1 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
+   ggtitle("Computing time of the 4 best models") +
+   xlab("Dataset size") +
+   scale_x_continuous(labels = scales::percent) +
+   ylab("Time (s)") +
    geom_point() +
    geom_line() +
    theme_bw()
 
 plot_time_size2 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
+   ggtitle("Computing time of the 4 best models") +
+   xlab("Dataset size") +
+   scale_x_continuous(labels = scales::percent) +
+   ylab("Time (s)") +
    geom_point() +
    geom_line() +
    scale_y_sqrt() +
@@ -247,6 +257,10 @@ plot_time_size2 <- time_result %>%
 plot_time_size3 <- time_result %>%
    filter(model != "UBCF") %>%
    ggplot(aes(x = size, y = time, color = model)) +
+   ggtitle("Computing time of the 3 best models") +
+   xlab("Dataset size") +
+   scale_x_continuous(labels = scales::percent) +
+   ylab("Time (s)") +
    geom_point() +
    geom_line() +
    theme_bw()
@@ -259,6 +273,10 @@ rmse_result <- rbind(time_result, benchmark_result6, benchmark_result7) %>%
 
 plot_rmse_size <- rmse_result %>%
    ggplot(aes(x = size, y = RMSE, color = model)) +
+   ggtitle("Stability of the 3 best models") +
+   xlab("Dataset size") +
+   ylab("Error (RMSE)") +
+   scale_x_continuous(labels = scales::percent) +
    geom_point() +
    geom_line() +
    geom_hline(yintercept = 0.9, linetype = "dotted", color = "darkred", alpha = 0.5) + # Minimal objective
