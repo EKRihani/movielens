@@ -179,8 +179,8 @@ run_bench <- function(model_list){
    result
 }
 
-# Define plot function
-plot_bench <- function(benchresult){
+# Define plot function (time v. RMSE) 
+plotting_time_rmse <- function(benchresult){
    benchresult %>%
       ggplot(aes(x = time, y = RMSE, label = model)) +
       xlab("Time (s)") +
@@ -221,11 +221,11 @@ for (n in 1:9){
 }
 
 # Create 3 time/RMSE plots
-plot_time_rmse1 <- plot_bench(benchmark_result1) +
+plot_time_rmse1 <- plotting_time_rmse(benchmark_result1) +
    ggtitle("Recommanderlab Benchmark (0.5 % subset)")
-plot_time_rmse2 <- plot_bench(benchmark_result3) +
+plot_time_rmse2 <- plotting_time_rmse(benchmark_result3) +
    ggtitle("Recommanderlab Benchmark (2 % subset)")
-plot_time_rmse3 <- plot_bench(benchmark_result5) +
+plot_time_rmse3 <- plotting_time_rmse(benchmark_result5) +
    ggtitle("Recommanderlab Benchmark (10 % subset)")
 
 # Build the size vs time/rmse base for our best models
@@ -233,6 +233,7 @@ time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, be
    filter(model %in% c("SVD", "POPULAR", "LIBMF", "UBCF")) %>%
    arrange(.,model)
 
+# Time v. size plots
 plot_time_size1 <- time_result %>%
    ggplot(aes(x = size, y = time, color = model)) +
    ggtitle("Computing time of the 4 best models") +
@@ -243,16 +244,8 @@ plot_time_size1 <- time_result %>%
    geom_line() +
    theme_bw()
 
-plot_time_size2 <- time_result %>%
-   ggplot(aes(x = size, y = time, color = model)) +
-   ggtitle("Computing time of the 4 best models") +
-   xlab("Dataset size") +
-   scale_x_continuous(labels = scales::percent) +
-   ylab("Time (s)") +
-   geom_point() +
-   geom_line() +
-   scale_y_sqrt() +
-   theme_bw()
+plot_time_size2 <- plot_time_size1 +
+   scale_y_continuous(trans = "sqrt") # Show quadratic behavior
 
 plot_time_size3 <- time_result %>%
    filter(model != "UBCF") %>%
@@ -313,7 +306,7 @@ gc(verbose = FALSE)     # Free memory
 #}
 
 ##### POPULAR Method #####
-values <- c("center","Z-Score")
+values <- c('"center"','"Z-Score"')    # Need two pairs of quotes to build a correct string with on set of quotes around center/ Z-score when evaluated by eval+parse.
 parameter <- "normalize = "
 tuning <- str_c(parameter, values)
 
@@ -321,6 +314,7 @@ tuning <- str_c(parameter, values)
 fit_pop <- function(config){
    start_time <- Sys.time()   # Start chronometer
    parameters <- str_c("list(", config, ")") # Convert parameters in appropriate form for "param = list(parameter=value)"
+   parameters <-  eval(parse(text=parameters))  # Evaluate the result of the character string
    recommend <- Recommender(data = edx_rrm_train, method = "POPULAR", param = parameters)  # Set recommendation parameters
    prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # Run prediction
    accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
@@ -334,8 +328,8 @@ fit_pop <- function(config){
 # Fitting function
 run_fit_pop <- function(parameter){
    result <- as.data.frame(t(sapply(X = parameter, FUN = fit_pop)))
-   parameter <- str_remove (parameter, "[a-z]+ = ")
-   result <- cbind(parameter,result)  # Add parameter column
+   parameter <- str_remove (parameter, "[a-z]+ = ")  # Create parameter factors
+   result <- cbind(parameter,result)
    colnames(result) <- c("Value","RMSE", "Time")  # Add column names
    rownames(result) <- NULL # Remove row names
    result
@@ -368,27 +362,43 @@ end.time - start.time   ### A SUPPRIMER
 
 # Setting parameters and value for popular method
 model <- "POPULAR"
-pop <- data.frame(parameter = "normalize", value = c("center", "Z-score")) # Normalization parameter (default = center)
+pop <- data.frame(parameter = "normalize", value = c("'center'", "'Z-score'")) # Normalization parameter (default = center)
 popular_settings <- data.frame(model, pop)  # Get all POPULAR settings (parameter, values) together
 
 # Setting parameters and value for LIBMF method
 ramp <- c(0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20)
 model <- "LIBMF"
 libmf_d <- data.frame(parameter = "dim", value = c(10*ramp)) # default = 10
-libmf_p <- data.frame(parameter = "costp_l2", value = c(0.01*ramp)) # Regularization parameter for user factor (default = 0.01)
-libmf_q <- data.frame(parameter = "costq_l2", value = c(0.01*ramp)) # Regularization parameter for item factor (default = 0.01)
-libmf_t <- data.frame(parameter = "nthread", value = c(1, 2, 4, 8, 16, 32))   # Number of threads (default = 1)
+libmf_p <- data.frame(parameter = "costp_l2", value = as.character(c(0.01*ramp))) # Regularization parameter for user factor (default = 0.01)
+libmf_q <- data.frame(parameter = "costq_l2", value = as.character(c(0.01*ramp))) # Regularization parameter for item factor (default = 0.01)
+libmf_t <- data.frame(parameter = "nthread", value = as.character(c(1, 2, 4, 8, 16, 32)))   # Number of threads (default = 1)
 limbf_settings <- data.frame(model, rbind(libmf_d, libmf_p, libmf_q, libmf_t)) # Get all LIBMF settings (parameters, values) together
 
 # Setting parameters and value for SVD method
 model <- "SVD"
 svd_k <- data.frame(parameter = "k", value = c(10*ramp)) # Rank of the SVD approximation ? (default = 10)
 svd_m <- data.frame(parameter = "maxiter", value = c(100*ramp)) # Maximum number of iterations (default = 100)
-svd_n <- data.frame(parameter = "normalize", value = c("center", "Z-Score")) # Normalization method (default = center)
+svd_n <- data.frame(parameter = "normalize", value = c("'center'", "'Z-Score'")) # Normalization method (default = center)
 svd_settings <- data.frame(model, rbind(svd_k, svd_m, svd_n)) # Get all SVD settings (parameters, values) together
 
 model_settings <- rbind(popular_settings, limbf_settings, svd_settings) # Get all settings together
 
+####### Test du fitting ######
+#### Insérer les model_settings$truc[n] dans une boucle sapply/for
+n <- 35  # Pour tester une valeur [n]
+start_time <- Sys.time()   # Start chronometer
+#parameters <- str_c("list(", config, ")") # Convert parameters in appropriate form for "param = list(parameter=value)"
+testparam <- str_c("list(", model_settings$parameter[n], " = ", model_settings$value[n], ")")
+testparam <- eval(parse(text=testparam))  # Evaluate the result of the character string
+recommend <- Recommender(data = edx_rrm_train, method = model_settings$model[n], param = testparam)  # Set recommendation parameters
+prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")  # Run prediction
+accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction) # Compute accuracy
+end_time <- Sys.time()     # Stop chronometer
+running_time <- difftime(end_time, start_time, units = "secs") # Time difference, unit forced (so mins and secs aren't mixed...)
+running_time <- round(running_time,2)  # Rounding to 2 decimals
+rmse <- as.numeric(round(accuracy["RMSE"],4)) # Compute RMSE with 4 digits
+result <- data.frame(rmse, running_time)
+cbind(model_settings[n,],result)
 
 # Set multithreading
 #n_threads <- detectCores()

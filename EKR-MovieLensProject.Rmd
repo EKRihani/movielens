@@ -114,8 +114,8 @@ Two models already have adequate performance out of the box, with $RMSE_{pop} =$
 The POPULAR method only has one parameter : *normalize*, which can be set on *center* or *Z-score*. The *center* normalization uses the mean of the ratings, whereas the *Z-score* normalization goes further by dividing by the standard deviation, which allows this normalization method to better handle outliers.
 ```{r echo=FALSE}
 kable(fit_pop_result, caption = "Popular model, *normalize* parameter tuning")
-```
-Our table doesn't seem to show any meaningful difference in RMSE. However, the Z-score normalization seems to be slightly faster.
+```  
+Quite surprisingly, our results show that the Z-score normalization, albeit more refined, is less accurate than the center normalization.
 
 ### 3.2.3. Tuning the SVD model
 
