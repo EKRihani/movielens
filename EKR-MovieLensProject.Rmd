@@ -107,17 +107,28 @@ plot(plot_rmse_size + theme_bw())
 According to the RMSE vs size scatterplot, our 3 selected models seem to show stability for $size \ge 0.20$.\
 Two models already have adequate performance out of the box, with $RMSE_{pop} =$ `r benchmark_result9["POPULAR",]$RMSE` in $t_{pop} =$ `r benchmark_result9["POPULAR",]$time` s for the Popular model and $RMSE_{lib} =$ `r benchmark_result9["LIBMF",]$RMSE` in $t_{lib} =$ `r benchmark_result9["LIBMF",]$time` s for LIBMF. Before tuning, SVD seems to lag behind, both in RMSE (`r benchmark_result9["SVD",]$RMSE`) and time (`r benchmark_result9["SVD",]$time` s) performance.
 
-<!-- PARALLELISATION ? -->
 
 ### 3.2.2. Tuning the POPULAR model
 
-The POPULAR method only has one parameter : *normalize*, which can be set on *center* or *Z-score*. The *center* normalization uses the mean of the ratings, whereas the *Z-score* normalization goes further by dividing by the standard deviation, which allows this normalization method to better handle outliers.
+The POPULAR method only has one parameter : *normalize*, which defines the normalization method and can be set on *center* or *Z-score*. The *center* normalization uses the mean of the ratings, whereas the *Z-score* normalization goes further by dividing by the standard deviation, which allows this normalization method to better handle outliers.
 ```{r echo=FALSE}
-kable(fit_pop_result, caption = "Popular model, *normalize* parameter tuning")
+kable(table_pop_normalize, caption = "Popular model, *normalize* parameter tuning")
 ```  
-Quite surprisingly, our results show that the Z-score normalization, albeit more refined, is less accurate than the center normalization.
+Quite surprisingly, our results show that the Z-score normalization, albeit more refined, produces less accurate predictions than the center normalization.
 
 ### 3.2.3. Tuning the SVD model
+
+The SVD method has three parameters :  
+* *k* : the rank of the SVD approximation (default : 10)  
+* *maxiter* : the maximum number of iterations (default : 100)  
+* *normalize* : the normalization method, *center* or *Z-score* (default : center)  
+```{r echo=FALSE}
+plot(plot_fitting5 + 
+   geom_hline(yintercept = 0.9, linetype = "dotted", color = "darkred", alpha = 0.5) +   # Minimal objective
+   geom_hline(yintercept = 0.865, linetype = "dotted", color = "darkgreen", alpha = 0.5) +   # Optimal objective
+   theme_bw())
+```  
+Raising the k parameter above the default value improves sensibly the accuracy of the prediction. However, this has a cost in computing time. Getting RMSE below the optimal value (RMSE <= 0.865) requires to set k >= 50 (RMSE = `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$rmse` in `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$running_time` s).
 
 ### 3.2.3. Tuning the LIBMF model
 
