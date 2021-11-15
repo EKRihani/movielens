@@ -1,7 +1,7 @@
 ---
 title: "MovieLens Dataset Analysis"
 author: "E.K. RIHANI"
-date: "07/10/2021"
+date: "15/11/2021"
 output: pdf_document
 indent: true   # Indent paragraphs
 header-includes:
@@ -72,16 +72,16 @@ The ALS seems to be quite slow, but accurate. More suprisingly, the ALS_implicit
 
 ```{r, fig.show="hold", out.width="50%", echo=FALSE}
 par(mar = c(4, 4, .1, .1))
-plot(plot_time_rmse2 + theme_bw())
-plot(plot_time_rmse3 + theme_bw())
+  plot(plot_time_rmse2 + theme_bw())
+  plot(plot_time_rmse3 + theme_bw())
 ```
 
 Bigger datasets seem to confirm the respective places of the SVD, UBCF, LIBMF and Popular methods.
 
 ```{r, fig.show="hold", out.width="50%", echo=FALSE}
 par(mar = c(4, 4, .2, .1))
-plot(plot_time_size1 + theme_bw())
-plot(plot_time_size2 + theme_bw())
+  plot(plot_time_size1 + theme_bw())
+  plot(plot_time_size2 + theme_bw())
 
 ```
 
@@ -114,7 +114,7 @@ The POPULAR method only has one parameter : *normalize*, which defines the norma
 ```{r echo=FALSE}
 kable(table_pop_normalize, caption = "Popular model, *normalize* parameter tuning")
 ```  
-Quite surprisingly, our results show that the Z-score normalization, albeit more refined, produces less accurate predictions than the center normalization.
+Quite surprisingly, our results show that the Z-score normalization, albeit more refined, produces slightly less accurate predictions than the center normalization, but is sensibly faster.
 
 ### 3.2.3. Tuning the SVD model
 
@@ -124,13 +124,49 @@ The SVD method has three parameters :
 * *normalize* : the normalization method, *center* or *Z-score* (default : center)  
 ```{r echo=FALSE}
 plot(plot_fitting5 + 
-   geom_hline(yintercept = 0.9, linetype = "dotted", color = "darkred", alpha = 0.5) +   # Minimal objective
-   geom_hline(yintercept = 0.865, linetype = "dotted", color = "darkgreen", alpha = 0.5) +   # Optimal objective
-   theme_bw())
+  geom_hline(yintercept = 0.9, linetype = "dotted", color = "darkred", alpha = 0.5) +   # Minimal objective
+  geom_hline(yintercept = 0.865, linetype = "dotted", color = "darkgreen", alpha = 0.5) +   # Optimal objective
+  theme_bw())
 ```  
-Raising the k parameter above the default value improves sensibly the accuracy of the prediction. However, this has a cost in computing time. Getting RMSE below the optimal value (RMSE <= 0.865) requires to set k >= 50 (RMSE = `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$rmse` in `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$running_time` s).
+Raising the *k* parameter vastly improves sensibly the accuracy of the prediction. However, this has a considerable cost in computing time. Getting RMSE below the optimal value (RMSE $\le$ 0.865) requires to set $k \ge$ 50 (RMSE = `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$rmse` in `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$time` s).  
+```{r echo=FALSE}
+plot(plot_fitting6 + theme_bw())
+```  
+The *maxiter* doesn't seem to have any meaningful impact on this study : all RMSE are identical, and computing time seem randomly distributed in a 2 seconds time span.  
+
+```{r echo=FALSE}
+kable(table_svd_normalize, caption = "SVD model, *normalize* parameter tuning")
+```  
+The *normalize* parameter does not seem to have a sensible impact on RMSE or computing time.  
+
+In conclusion, in this study, the SVD model can be used to reach RMSE $\le$ 0.865. Better accuracy (lower RMSE) can be obtained with higher ranks of SVD approximations ($k \ge$ 50), but this accuracy has a strong cost in computing time. The *maxiter* and *normalize* factors don't seem to have a meaningful impact on accuracy or computing time.  
 
 ### 3.2.3. Tuning the LIBMF model
+The LIBMF method has four parameters :  
+* *dim* :  (default : 10)  
+* *costp_l2* :  (default : 0.01)  
+* *costq_l2* :  (default : 0.01)  
+* *nthread* :  (default : 1)  
+```{r echo=FALSE}
+plot(plot_fitting1 + theme_bw())
+```  
+
+```{r echo=FALSE}
+plot(plot_fitting2 + theme_bw())
+```  
+
+```{r echo=FALSE}
+plot(plot_fitting3 + theme_bw())
+```  
+
+```{r echo=FALSE}
+plot(plot_fitting4 + theme_bw())
+```  
+
+In conclusion, LIBMF seems, by far, the most interesting model, with both excellent accuracy and computing times, even with default parameters.  
+The most impactful way to improve accuracy seems to increase the dimension factor (*dim*). This factor has a strong impact on computing time, but the excellent performance of the LIBMF model allows the user to choose between good accuracy and excellent computing time, or outstanding accuracy in a reasonable time.  
+The user factor (*costp_l2*) and item factor (*costq_l2*) regularization parameters seem to have some minor impact, with lower values giving slightly better accuracy, with little effect in computing time.  
+The number of threads has some impact in computing time. However, this impact looks quite minor. This can probably be explained by the small size of the sample used for fitting purposes and resulting short computation time : the gains obtained by multithreading thus cannot overcome the time and memory used to setup the parallelization (parallelism overhead).
 
 ## 3.3. Evaluation against the *validation* dataset
 

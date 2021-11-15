@@ -56,8 +56,8 @@ temp <- movielens[test_index,]
 
 # Make sure userId and movieId in validation set are also in edx set
 validation <- temp %>% 
-   semi_join(edx, by = "movieId") %>%
-   semi_join(edx, by = "userId")
+  semi_join(edx, by = "movieId") %>%
+  semi_join(edx, by = "userId")
 
 # Add rows removed from validation set back into edx set
 removed <- anti_join(temp, validation)
@@ -112,7 +112,7 @@ gc(verbose = FALSE)   # Free as much memory as possible
 # Prepare training dataset for recommenderlab
 edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")   # Convert data to matrix
 edx_rrm <- as(edx_rrm, "realRatingMatrix")     # Convert matrix to realRatingMatrix
-rm(edx)  # Free memory
+rm(edx)     # Free memory
 gc(verbose = FALSE)     # Free memory
 
 ##### A SUPPRIMER####
@@ -132,39 +132,39 @@ edx_rrm_test = NULL
 
 # Define function : dataset size-reducing and splitting (train/evaluation)
 dataset_build <- function(train_size){
-   reduction_index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm) * train_size, replace = FALSE)
-   edx_rrm_small <- edx_rrm[reduction_index]
-   test_index <- sample(x = seq(1, nrow(edx_rrm_small)), size = nrow(edx_rrm_small)*0.1, replace = FALSE)
-   edx_rrm_train <<- edx_rrm_small[-test_index]
-   edx_rrm_test <<- edx_rrm_small[test_index]
+  reduction_index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm) * train_size, replace = FALSE)
+  edx_rrm_small <- edx_rrm[reduction_index]
+  test_index <- sample(x = seq(1, nrow(edx_rrm_small)), size = nrow(edx_rrm_small)*0.1, replace = FALSE)
+  edx_rrm_train <<- edx_rrm_small[-test_index]
+  edx_rrm_test <<- edx_rrm_small[test_index]
 }
 
 # Define function : benchmark (time and RMSE)
 bench <- function(model){
-   start_time <- Sys.time()     # Start chronometer
-   recommend <- Recommender(data = edx_rrm_train, method = model)   # Set recommendation parameters
-   prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")   # Run prediction
-   accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction)   # Compute accuracy
-   end_time <- Sys.time()     # Stop chronometer
-   running_time <- round(difftime(end_time, start_time, units = "secs"),2)   # Time difference, unit forced (or will mix mins and secs)
-   rmse <- as.numeric(round(accuracy["RMSE"],4))   # Compute RMSE with 4 digits
-   c(rmse, running_time)     # Reports RMSE and running time
+  start_time <- Sys.time()     # Start chronometer
+  recommend <- Recommender(data = edx_rrm_train, method = model)   # Set recommendation parameters
+  prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")   # Run prediction
+  accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction)   # Compute accuracy
+  end_time <- Sys.time()     # Stop chronometer
+  time <- round(difftime(end_time, start_time, units = "secs"),2)   # Time difference, unit forced (or will mix mins and secs)
+  rmse <- as.numeric(round(accuracy["RMSE"],4))   # Compute RMSE with 4 digits
+  c(rmse, time)     # Reports RMSE and running time
 }
 
 # Define function : report results
 run_bench <- function(model_list){
-   result <- as.data.frame(t(sapply(X = model_list, FUN = bench)))
-   result <- cbind(model_list,result)   # Add model column
-   colnames(result) <- c("model", "RMSE", "time")   # Add column names
-   result$RMSE <- as.numeric(result$RMSE)   # Convert factors to numeric values
-   result$time <- as.numeric(result$time)
-   result
+  result <- as.data.frame(t(sapply(X = model_list, FUN = bench)))
+  result <- cbind(model_list,result)   # Add model column
+  colnames(result) <- c("model", "RMSE", "time")   # Add column names
+  result$RMSE <- as.numeric(result$RMSE)   # Convert factors to numeric values
+  result$time <- as.numeric(result$time)
+  result
 }
 
 # Define function : plot (time v. RMSE) 
 plotting_time_rmse <- function(benchresult){
-   benchresult %>%
-      ggplot(aes(x = time, y = RMSE, label = model)) +
+  benchresult %>%
+    ggplot(aes(x = time, y = RMSE, label = model)) +
       xlab("Time (s)") +
       ylab("Error (RMSE)") +
       geom_point() +
@@ -175,89 +175,89 @@ plotting_time_rmse <- function(benchresult){
 }
 
 # Create list of tested models (no IBCF)
-#list_methods_1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF")
-#list_methods_2 <- c("POPULAR", "LIBMF", "SVD", "UBCF")
-#list_methods_3 <- c("POPULAR","LIBMF", "SVD")
+list_methods_1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF")
+list_methods_2 <- c("POPULAR", "LIBMF", "SVD", "UBCF")
+list_methods_3 <- c("POPULAR","LIBMF", "SVD")
 
 # Lighter lists, for slower computers
-list_methods_1 <- c("RANDOM", "POPULAR","LIBMF", "SVD", "UBCF")
-list_methods_2 <- c("POPULAR", "LIBMF","SVD")
-list_methods_3 <- c("POPULAR","LIBMF")
+#list_methods_1 <- c("RANDOM", "POPULAR","LIBMF", "SVD", "UBCF")
+#list_methods_2 <- c("POPULAR", "LIBMF","SVD")
+#list_methods_3 <- c("POPULAR","LIBMF")
 
 # Define the dataset sizes and corresponding method lists (for 9 runs)
 methods_sizes <- data.frame(
-   method = c(1, rep(2,4), rep(3,4)),     # Method list numbers, to be concatenated with "list_methods_"
-   size = c(0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 1)   # Training set sizes
+  method = c(1, rep(2,4), rep(3,4)),     # Method list numbers, to be concatenated with "list_methods_"
+  size = c(0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 1)   # Training set sizes
 )
 
 # Build the 9 datasets, run the corresponding  benchmarks
 l <- nrow(methods_sizes)
 for (n in 1:l){
-   size <- methods_sizes$size[n]     # Select the size given in the 'n' line
-   dataset_build(methods_sizes$size[n])   # Build the dataset of the selected size
-   method_name <- paste0("list_methods_",methods_sizes$method[n])   # Concatenate "list_methods" and the number of the method in the [n] line
-   method <- get(method_name)     # Get the actual list of methods in the method_list'n'
-   benchname <- paste0("benchmark_result", n)   # Concatenate benchmark_result with the n
-   assign(benchname, run_bench(method))   # Report the results in the benchmark_result'n' dataframe
-   assign(benchname, cbind(get(benchname), size))   # Add a size column with the selected size
+  size <- methods_sizes$size[n]     # Select the size given in the 'n' line
+  dataset_build(methods_sizes$size[n])   # Build the dataset of the selected size
+  method_name <- paste0("list_methods_",methods_sizes$method[n])   # Concatenate "list_methods" and the number of the method in the [n] line
+  method <- get(method_name)     # Get the actual list of methods in the method_list'n'
+  benchname <- paste0("benchmark_result", n)   # Concatenate benchmark_result with the n
+  assign(benchname, run_bench(method))   # Report the results in the benchmark_result'n' dataframe
+  assign(benchname, cbind(get(benchname), size))   # Add a size column with the selected size
 }
 
 # Create 3 RMSE vs time plots
 plot_time_rmse1 <- plotting_time_rmse(benchmark_result1) +
-   ggtitle("Recommanderlab Benchmark (0.5 % subset)")
+  ggtitle("Recommanderlab Benchmark (0.5 % subset)")
 plot_time_rmse2 <- plotting_time_rmse(benchmark_result3) +
-   ggtitle("Recommanderlab Benchmark (2 % subset)")
+  ggtitle("Recommanderlab Benchmark (2 % subset)")
 plot_time_rmse3 <- plotting_time_rmse(benchmark_result5) +
-   ggtitle("Recommanderlab Benchmark (10 % subset)")
+  ggtitle("Recommanderlab Benchmark (10 % subset)")
 
 # Build the size vs time/rmse base for our best models
 time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, benchmark_result4, benchmark_result5) %>%
-   filter(model %in% c("SVD", "POPULAR", "LIBMF", "UBCF")) %>%
-   arrange(.,model)
+  filter(model %in% c("SVD", "POPULAR", "LIBMF", "UBCF")) %>%
+  arrange(.,model)
 
 # Draw time vs size plots
 plot_time_size1 <- time_result %>%
-   ggplot(aes(x = size, y = time, color = model)) +
-   ggtitle("Computing time of the 4 best models") +
-   xlab("Dataset size") +
-   scale_x_continuous(labels = scales::percent) +
-   ylab("Time (s)") +
-   geom_point() +
-   geom_line() +
-   theme_bw()
+  ggplot(aes(x = size, y = time, color = model)) +
+  ggtitle("Computing time of the 4 best models") +
+  xlab("Dataset size") +
+  scale_x_continuous(labels = scales::percent) +
+  ylab("Time (s)") +
+  geom_point() +
+  geom_line() +
+  theme_bw()
 
 plot_time_size2 <- plot_time_size1 +
-   scale_y_continuous(trans = "sqrt")   # Show quadratic behavior
+  scale_y_continuous(trans = "sqrt")   # Show quadratic behavior
 
 plot_time_size3 <- time_result %>%
-   filter(model != "UBCF") %>%
-   ggplot(aes(x = size, y = time, color = model)) +
-   ggtitle("Computing time of the 3 best models") +
-   xlab("Dataset size") +
+  filter(model != "UBCF") %>%
+  ggplot(aes(x = size, y = time, color = model)) +
+  ggtitle("Computing time of the 3 best models") +
+  xlab("Dataset size") +
    scale_x_continuous(labels = scales::percent) +
-   ylab("Time (s)") +
-   geom_point() +
-   geom_line() +
-   theme_bw()
+  ylab("Time (s)") +
+  geom_point() +
+  geom_line() +
+  theme_bw()
 
 gc(verbose = FALSE)   # Free memory
 
 rmse_result <- rbind(time_result, benchmark_result6, benchmark_result7) %>%
-   filter(model %in% c("SVD", "POPULAR", "LIBMF")) %>%
-   arrange(.,model)
+  filter(model %in% c("SVD", "POPULAR", "LIBMF")) %>%
+  arrange(.,model)
 
 plot_rmse_size <- rmse_result %>%
-   ggplot(aes(x = size, y = RMSE, color = model)) +
-   ggtitle("Stability of the 3 best models") +
-   xlab("Dataset size") +
-   ylab("Error (RMSE)") +
-   scale_x_continuous(labels = scales::percent) +
-   geom_point() +
-   geom_line() +
-   geom_hline(yintercept = 0.9, linetype = "dotted", color = "darkred", alpha = 0.5) +   # Minimal objective
-   geom_hline(yintercept = 0.865, linetype = "dotted", color = "darkgreen", alpha = 0.5) +   # Optimal objective 
-   geom_vline(xintercept = 0.2, linetype = "dashed", color = "royalblue4", alpha = 0.7) +   # Optimal dataset size
-   theme_bw()
+  ggplot(aes(x = size, y = RMSE, color = model)) +
+  ggtitle("Stability of the 3 best models") +
+  xlab("Dataset size") +
+  ylab("Error (RMSE)") +
+  scale_x_continuous(labels = scales::percent) +
+  geom_point() +
+  geom_line() +
+  geom_hline(yintercept = 0.9, linetype = "dotted", color = "darkred", alpha = 0.5) +  # Minimal objective
+  geom_hline(yintercept = 0.865, linetype = "dotted", color = "darkgreen", alpha = 0.5) +  # Optimal objective 
+  geom_vline(xintercept = 0.2, linetype = "dashed", color = "royalblue4", alpha = 0.7) +  # Optimal dataset size
+  theme_bw()
 
 ### Affichage graphiques (FACULTATIF) ###
 plot_time_size2
@@ -307,18 +307,18 @@ l <- nrow(model_settings)
 #l <- which(model_settings$model == "SVD") - 1   # For slow computers : skips the SVD fitting (long, memory-heavy)
 results_fitting <- NULL
 for (n in 1:l){
-   start_time <- Sys.time()     # Start chronometer
-   testparam <- str_c("list(", model_settings$parameter[n], " = ", model_settings$value[n], ", verbose = TRUE)")   # Convert parameters in appropriate form for "param = list(parameter=value)"
-   testparam <- eval(parse(text=testparam))     # Evaluate the result of the character string
-   recommend <- Recommender(data = edx_rrm_train, method = model_settings$model[n], param = testparam)   # Set recommendation parameters
-   prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")   # Run prediction
-   accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction)     # Compute accuracy
-   end_time <- Sys.time()     # Stop chronometer
-   running_time <- difftime(end_time, start_time, units = "secs")   # Time difference, unit forced (so mins and secs aren't mixed...)
-   running_time <- round(running_time,2)   # Rounding to 2 decimals
-   rmse <- as.numeric(round(accuracy["RMSE"],4))   # Compute RMSE with 4 digits
-   result <- data.frame(rmse, running_time)   # Combine RMSE and computing time
-   results_fitting <- rbind(results_fitting, cbind(model_settings[n,],result))   # Put the new results below the old ones
+  start_time <- Sys.time()     # Start chronometer
+  testparam <- str_c("list(", model_settings$parameter[n], " = ", model_settings$value[n], ", verbose = TRUE)")   # Convert parameters in appropriate form for "param = list(parameter=value)"
+  testparam <- eval(parse(text=testparam))     # Evaluate the result of the character string
+  recommend <- Recommender(data = edx_rrm_train, method = model_settings$model[n], param = testparam)   # Set recommendation parameters
+  prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")   # Run prediction
+  accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction)     # Compute accuracy
+  end_time <- Sys.time()     # Stop chronometer
+  time <- difftime(end_time, start_time, units = "secs")   # Time difference, unit forced (so mins and secs aren't mixed...)
+  time <- round(time,2)   # Rounding to 2 decimals
+  rmse <- as.numeric(round(accuracy["RMSE"],4))   # Compute RMSE with 4 digits
+  result <- data.frame(rmse, time)   # Combine RMSE and computing time
+  results_fitting <- rbind(results_fitting, cbind(model_settings[n,],result))   # Put the new results below the old ones
 }
 results_fitting
 
@@ -327,23 +327,23 @@ plot_criteria <- results_fitting %>% select(model, parameter) %>% unique() %>% f
 l <- nrow(plot_criteria)
 
 for (n in 1:l){
-   plot_title <- paste("Fitting :", plot_criteria$model[n], "model,", plot_criteria$parameter[n], "parameter")
-   plot <- results_fitting %>%
-      filter(model == plot_criteria$model[n], parameter == plot_criteria$parameter[n]) %>%
-      ggplot(aes(x = running_time, y = rmse, label = value)) +
-      ggtitle(plot_title) +
-      ylab("Error (RMSE)") +
-      xlab("Time (s)") +
-      scale_x_continuous() +     # Manually sets scale for difftime objects
-      geom_point() +
-      geom_text_repel()
-   plotname <- paste0("plot_fitting", n)   # Concatenate plot_fitting with the n
-   assign(plotname, plot)     # Assign the plot to the plot_fitting'n' name
+  plot_title <- paste("Fitting :", plot_criteria$model[n], "model,", plot_criteria$parameter[n], "parameter")
+  plot <- results_fitting %>%
+    filter(model == plot_criteria$model[n], parameter == plot_criteria$parameter[n]) %>%
+    ggplot(aes(x = time, y = rmse, label = value)) +
+    ggtitle(plot_title) +
+    ylab("Error (RMSE)") +
+    xlab("Time (s)") +
+    scale_x_continuous() +     # Manually sets scale for difftime objects
+    geom_point() +
+    geom_text_repel()
+  plotname <- paste0("plot_fitting", n)   # Concatenate plot_fitting with the n
+  assign(plotname, plot)     # Assign the plot to the plot_fitting'n' name
 }
 
 # Build report tables for the normalize parameters
-table_pop_normalize <- results_fitting %>% filter(model == "POPULAR") %>% select(value, rmse, running_time)
-table_SVD_normalize <- results_fitting %>% filter(model == "SVD", parameter == "normalize") %>% select(value, rmse, running_time)
+table_pop_normalize <- results_fitting %>% filter(model == "POPULAR") %>% select(value, rmse, time)
+table_svd_normalize <- results_fitting %>% filter(model == "SVD", parameter == "normalize") %>% select(value, rmse, time)
 
 save.image(file = "EKR-MovieLens.RData")
 
@@ -353,10 +353,10 @@ recommend <- Recommender(data = edx_rrm_train, method = "LIBMF", param = list(di
 prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")   # Run prediction
 accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction)   # Compute accuracy
 end_time <- Sys.time()     # Stop chronometer
-running_time <- difftime(end_time, start_time, units = "secs")   # Time difference, unit forced (so mins and secs aren't mixed...)
-running_time <- round(running_time,2)   # Rounding to 2 decimals
+time <- difftime(end_time, start_time, units = "secs")   # Time difference, unit forced (so mins and secs aren't mixed...)
+time <- round(time,2)   # Rounding to 2 decimals
 rmse <- as.numeric(round(accuracy["RMSE"],4))   # Compute RMSE with 4 digits
-result <- data.frame(rmse, running_time)     # Combine RMSE and computing time
+result <- data.frame(rmse, time)     # Combine RMSE and computing time
 result
 
 
