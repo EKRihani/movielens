@@ -5,7 +5,7 @@ date: "15/11/2021"
 output: pdf_document
 indent: true   # Indent paragraphs
 header-includes:
-- \usepackage{indentfirst} # Indent first line of each paragraph
+#- \usepackage{indentfirst} # Indent first line of each paragraph
 ---
 
 ```{r setup, include=FALSE}
@@ -19,174 +19,205 @@ library(rmarkdown)
 # 1. Overview
 
 ## 1.1 Goal of the study
-
+\paragraph{}
 The aim of this study is to analyze a MovieLens dataset and try to create a model that can predict users' future preferences based on their current preferences, using data analysis and machine learning techniques.
 
 ## 1.2 The dataset
-
+\paragraph{}
 The MovieLens datasets were created by the GroupLens research lab, from the Department of Computer Science and Engineering at the University of Minnesota.
-
+\paragraph{}
 The dataset used for this study is the 10M dataset (<https://grouplens.org/datasets/movielens/10m/>). The 10M MovieLens dataset contains `r total_number_ratings` ratings for `r total_number_movies` movies, from `r total_number_users` users, which translates into a `r total_number_movies` $\times$ `r total_number_users` matrix, with `r round(total_number_movies*total_number_users/1e6, 1)` millions cells, `r round((1 - total_number_ratings/(total_number_movies*total_number_users))*100, 1)` % of which are empty. In layman's terms, the goal of this project is to fill these empty cells as accurately as possible.
-
+\paragraph{}
 The provided information includes the user's unique ID (`r column_names[1]`), the movie's unique ID (`r column_names[2]`), the rating given by the user (`r column_names[3]`), the timestamp of the rating (`r column_names[4]`), the title of the movie (`r column_names[5]`) and its genre (`r column_names[6]`).
-
+\paragraph{}
 This dataset was split into a training set (*edx*, 90% of the ratings) that will be used for building, training and tuning the recommendation system and a validation set (*validation*, 10% of the ratings) that will exclusively be used for the final evaluation of the accuracy of our recommendation system.
 
 # 2. Methods and Analysis
-
+\paragraph{}
 This project will be articulated around the use of the *recommenderlab* package, which is a very powerful library for building recommendation systems that was recommended by Pr. Rafael Irizarry in his data science course.
-
+\paragraph{}
 We'll first briefly introduce the recommenderlab library and its different recommendation systems, then we'll evaluate their respective performances, both in computing time and accuracy, and we'll then optimize the tuning parameters of our best models before using the best model against our validation set.
 
 ## 2.1 Preparing data for the recommenderlab package
-
+\paragraph{}
 The recommenderlab package uses several specific data formats, all based on a single sparse matrix, where the ratings (binary or numeric) are located at the intersection of the user row (*userId*) row and the rated object (*movieId*) column. Since our rating are numeric, this study will use the *realRatingMatrix* format.
-
+\paragraph{}
 Since recommenderlab only uses ratings, one notable limitation of this study is that it will not use some potentially useful information such as the moment of the rating or the year or gender of the movie to improve the accuracy of the analysis.
-
+\paragraph{}
 The first step of the data preparation involves the transformation of our dataset into a matrix
 
-## 2.2 Comparing the performance of the different models
-
+## 2.2 Comparing the performance of the different models  
+\paragraph{}
 Several metrics can be used to evaluate the accuracy of the prediction, such as the Mean Average Error (MAE, consistent with the data units), the Mean Square Error (MSE, penalizes large errors) and the Root Mean Square Error (RMSE, penalizes large errors **and** is consistent with the data units). The metric used in this study to evaluate the accuracy of the prediction is the root-mean-squared error (RMSE), given by : $$\sqrt{ \frac{1}{N} \sum_{m,u}\left(\hat{y}_{m,u} -  y_{m,u}\right)^{2}}$$ With N the number of ratings, $\hat{y}_{m,u}$ the rating (for the movie m, by the user u) that is predicted by the model built with the training set and $y_{m,u}$ the actual rating of the testing set. The lower the RMSE, the more accurate the model.
-
+\paragraph{}
 Recommenderlab conveniently provides a *calcPredictionAccuracy* function that computes the MAE, MSE, RMSE.
-
+\paragraph{}
 *Section that explains the process and techniques used, including data cleaning, data exploration and visualization, insights gained, and your modeling approach*
 
-## 2.4 About the recommenderlab methods
-The *Random* method, as its name suggests, assigns random ratings to all movies for each user. This method can be used to benchmark other models.  
-
-The *Popular* method is based on the most rated items, and will thus recommend the most viewed movies. The rating is evaluated using a distance method.  
-
-The *UBCF* and *IBCF* methods are respectively an user-based and an item-based collaborating filtering methods. These methods are the oldest recommender methods (1992) and are based on a "similar users like similar things" strategies. UBCF focuses on the users and is based on the hypothesis that users with comparable preferences will rate movies similarly, and thus tries to find for each user a k-neighborhood of the most comparable users (by using cosine similarity, by default) and aggregate their ratings to form a prediction. IBCF works similarly, but is focused on items, the core hypothesis being that users prefer movies that are similar to movies they already like. The IBCF method uses a comparable approach as the UBCF but tries to find similarities between movies by computing the k-neighborhood of movies instead of users.  
-
-The *ALS*, *ALS_implicit* and *LIBMF* methods are all based on the same mathematical concept : matrix factorization. Matrix factorization is a widely used method that tries to approximate our entire rating matrix $R_{u \times m}$ as the product of smaller-sized matrices $P_{k \times u}$ and $Q_{k \times m}$ : $R \approx P'Q$. In other words, each user and each item are summarized by *k* dimensional vectors, where *k* is a small fixed number. The underlying mathematical problem is then to minimize the distance (least squares error) between each known $r_{u,m}$ rating and the corresponding intersection of the product of our two smaller-sized matrices $p_{u}^{T}.q_{m}$. 
-In ALS and ALS_implici* optimization strategies, $p_{u}$ is fixed and $q_{m}$ is optimized by minimizing the square error, then $q_{m}$ is fixed and then $p_{u}$ is optimized, hence the *Alternating Least Square* name. The ALS method is used for explicit data, which are strictly correlated to the values we are trying to predict. The ALS_implicit method is designed for implicit data that reflects the interaction between the user and the movie and is only indirectly linked to the rating. In our application, the ALS method will try to predict user ratings using user ratings, whereas the ALS_implicit method tries to predict user ratings with clicks, fast-forwards, number of times viewed... Since these kind of data isn't present in our dataset, using the ALS_implicit method makes little sense.  
-
-*LIMBF* is an open-source library was created by Chin et al, from the Taiwan University, in 2014. This algorithm uses a gradient descent approach, which is an iterative algorithm that compute the local gradient of this distance and adjusts the $p_{u}$ and $q_{m}$ *against* the gradient in order to approach a better value. This specific library also aims to make full use of the computing power of modern processors (SSE and AMX instructions, multithreading) in Matrix Factorization.  
-
+## 2.4 About the recommenderlab methods  
+\paragraph{}
+The *Random* method, as its name suggests, assigns random ratings to all movies for each user. This method can be used to benchmark other models.
+\paragraph{}
+The *Popular* method is based on the most rated items, and will thus recommend the most viewed movies. The rating is evaluated using a distance method.
+\paragraph{}
+The *UBCF* and *IBCF* methods are respectively an user-based and an item-based collaborating filtering methods. These methods are the oldest recommender methods (1992) and are based on a "similar users like similar things" strategies. UBCF focuses on the users and is based on the hypothesis that users with comparable preferences will rate movies similarly, and thus tries to find for each user a k-neighborhood of the most comparable users (by using cosine similarity, by default) and aggregate their ratings to form a prediction. IBCF works similarly, but is focused on items, the core hypothesis being that users prefer movies that are similar to movies they already like. The IBCF method uses a comparable approach as the UBCF but tries to find similarities between movies by computing the k-neighborhood of movies instead of users.
+\paragraph{}
+The *ALS*, *ALS_implicit* and *LIBMF* methods are all based on the same mathematical concept : matrix factorization. Matrix factorization is a widely used method that tries to approximate our entire rating matrix $R_{u \times m}$ as the product of smaller-sized matrices $P_{k \times u}$ and $Q_{k \times m}$ : $R \approx P'Q$. In other words, each user and each item are summarized by *k* dimensional vectors, where *k* is a small fixed number. The underlying mathematical problem is then to minimize the distance (least squares error) between each known $r_{u,m}$ rating and the corresponding intersection of the product of our two smaller-sized matrices $p_{u}^{T}.q_{m}$.
+\paragraph{}
+In ALS and ALS_implicit optimization strategies, $p_{u}$ is fixed and $q_{m}$ is optimized by minimizing the square error, then $q_{m}$ is fixed and then $p_{u}$ is optimized, hence the *Alternating Least Square* name. The ALS method is used for explicit data, which are strictly correlated to the values we are trying to predict. The ALS_implicit method is designed for implicit data that reflects the interaction between the user and the movie and is only indirectly linked to the rating. In our application, the ALS method will try to predict user ratings using user ratings, whereas the ALS_implicit method tries to predict user ratings with clicks, fast-forwards, number of times viewed... Since these kind of data isn't present in our dataset, using the ALS_implicit method makes little sense.
+\paragraph{}
+*LIMBF* is an open-source library was created by Chin et al, from the Taiwan University, in 2014. This algorithm uses a gradient descent approach, which is an iterative algorithm that compute the local gradient of this distance and adjusts the $p_{u}$ and $q_{m}$ *against* the gradient in order to approach a better value. This specific library also aims to make full use of the computing power of modern processors (SSE and AMX instructions, multithreading) in Matrix Factorization.
+\paragraph{}
 The *SVD* and *SVDF* (Funk SVD) methods are both Singular Value Decomposition methods
 
 # 3. Results
 
 ## 3.1. Performance of the different models
-
+\paragraph{}
 We can create a scatterplot of the RMSE vs compute time of our different models.
-
+\paragraph{}
 ```{r echo = FALSE}
 plot(plot_time_rmse1 + theme_bw())
 ```
-
-As one can expect, the random model is among the fastest, but performs quite poorly in termes of accuracy.
-
-The Popular, SVD and LIBMF are clear winners, being all in the "fast and accurate" quadrant of this plot. UBCF appears to be a reasonable option, too. SVDF's accuracy is on par with SVD, but SVDF seems to be much slower.
-
-The ALS method seems to be quite slow, but accurate. As expected, we see a large difference between explicit and implicit ALS methods. Our data are explicit : we use (known) user ratings to predict (unknown) user ratings. Force-feeding these explicit data in an method that was designed around implicit data was a recipe for disaster, and gives results that are both extremely slow and even more inaccurate than just giving random ratings. These results underline the importance of understanding how these model work, and not just treat them as "black boxes".
-
+\paragraph{}
+As one can expect, the random model is among the fastest, but performs quite poorly in terms of accuracy.
+\paragraph{}
+The Popular, SVD, UBCF and LIBMF are clear winners, being all in the "fast and accurate" quadrant of this plot. SVDF's accuracy is on par with SVD, but SVDF seems to be much slower.
+\paragraph{}
+The ALS method seems to be quite slow, but accurate. As expected, we see a large difference between explicit and implicit ALS methods. Our data are explicit : we use (known) user ratings to predict (unknown) user ratings. Force-feeding these explicit data in an method that was designed around implicit data gives results that are both extremely slow and very inaccurate ($RMSE_{ALSimplicit} > RMSE_{random}$). These results underline the importance of understanding how these models work, and not just treat them as "black boxes".
+\paragraph{}
 ```{r, fig.show = "hold", out.width = "50%", echo = FALSE}
 par(mar = c(4, 4, .1, .1))
   plot(plot_time_rmse2 + theme_bw())
   plot(plot_time_rmse3 + theme_bw())
 ```
-
+\paragraph{}
 Bigger datasets seem to confirm the respective places of the SVD, UBCF, LIBMF and Popular methods.
-
+\paragraph{}
 ```{r, fig.show = "hold", out.width = "50%", echo = FALSE}
 par(mar = c(4, 4, .2, .1))
   plot(plot_time_size1 + theme_bw())
   plot(plot_time_size2 + theme_bw())
-
 ```
-
+\paragraph{}
 The computing time vs dataset size scatterplot seems to show a lower computing time for SVD, Popular and LIBMF models, while the UBCF model appears to be considerably slower. Furthermore, the computing time of this model seems to exhibit a quadratic behavior, whereas the others seem to be linear.
-
+\paragraph{}
 The UBCF model, while quite accurate, will probably be too slow for this study.
-
-```{r echo = FALSE}
+\paragraph{}
+```{r out.width = "90%", echo = FALSE}
 plot(plot_time_size3 + theme_bw())
 ```
+\paragraph{}
 We will thus select the LIBMF, POPULAR and SVD models and will tune them to improve their performance.
 
 ## 3.2. Tuning the models
 
 ### 3.2.1. Selecting the best dataset size
-
+\paragraph{}
 In order to tune our models, we first have to chose a relevant-sized training set.
-
-```{r echo = FALSE}
+\paragraph{}
+```{r out.width = "90%", echo = FALSE}
 plot(plot_rmse_size + theme_bw())
 ```
-
+\paragraph{}
 According to the RMSE vs size scatterplot, our 3 selected models seem to show stability for $size \ge 0.20$.\
 Two models already have adequate performance out of the box, with $RMSE_{pop} =$ `r benchmark_result9["POPULAR",]$RMSE` in $t_{pop} =$ `r benchmark_result9["POPULAR",]$time` s for the Popular model and $RMSE_{lib} =$ `r benchmark_result9["LIBMF",]$RMSE` in $t_{lib} =$ `r benchmark_result9["LIBMF",]$time` s for LIBMF. Before tuning, SVD seems to lag behind, both in RMSE (`r benchmark_result9["SVD",]$RMSE`) and time (`r benchmark_result9["SVD",]$time` s) performance.
 
-
 ### 3.2.2. Tuning the POPULAR model
-
-The POPULAR method only has one parameter : *normalize*, which defines the normalization method and can be set on *center* or *Z-score*. The *center* normalization uses the mean of the ratings, whereas the *Z-score* normalization goes further by dividing by the standard deviation, which allows this normalization method to better handle outliers.
+\paragraph{}
+The POPULAR method only has one parameter : *normalize*, which defines the normalization method used to counter the user biases. This parameter can be set on *center* or *Z-score*. The *center* normalization uses the mean of the ratings, whereas the *Z-score* normalization goes further by dividing by the standard deviation, which allows this normalization method to better handle outliers.
 ```{r echo = FALSE}
 kable(table_pop_normalize, caption = "Popular model, *normalize* parameter tuning")
-```  
+```
+\paragraph{}
 Quite surprisingly, our results show that the Z-score normalization, albeit more refined, produces slightly less accurate predictions than the center normalization, but is sensibly faster.  
-
-The Popular method, while quite simple to understand and to use, is not accurate enough (RMSE = `r min(table_pop_normalize$rmse)` ) for our study.
+\paragraph{}
+In conclusion, the Popular method, while quite simple to understand and to use, is not accurate enough (RMSE = `r min(table_pop_normalize$rmse)` ) for our study.
 
 ### 3.2.3. Tuning the SVD model
+\paragraph{}
+The SVD method has three parameters :
 
-The SVD method has three parameters :  
-* *k* : the rank of the SVD approximation (default : 10)  
-* *maxiter* : the maximum number of iterations (default : 100)  
-* *normalize* : the normalization method, *center* or *Z-score* (default : center)  
-```{r echo = FALSE}
+* *k* : the rank of the SVD approximation (default : 10)
+* *maxiter* : the maximum number of iterations (default : 100)
+* *normalize* : the normalization method, *center* or *Z-score* (default : center
+\paragraph{}
+```{r out.width = "90%", echo = FALSE}
 plot(plot_fitting5 + 
   geom_hline(yintercept = 0.9, linetype = "dotted", color = "darkred", alpha = 0.5) +   # Minimal objective
   geom_hline(yintercept = 0.865, linetype = "dotted", color = "darkgreen", alpha = 0.5) +   # Optimal objective
   theme_bw())
-```  
-Raising the *k* parameter vastly improves the accuracy of the prediction. However, this has a considerable cost in computing time. Getting RMSE below the optimal value (RMSE $\le$ 0.865) requires to set $k >$ 50 (RMSE = `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$rmse` in `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$time` s for *k* = `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$value`).  
-```{r echo=FALSE}
+```
+\paragraph{}
+Raising the *k* parameter vastly improves the accuracy of the prediction. However, this has a considerable cost in computing time. Getting RMSE below the optimal value (RMSE $\le$ 0.865) requires to set $k >$ 50 (RMSE = `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$rmse` in `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$time` s for *k* = `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$value`).
+\paragraph{}
+```{r out.width = "90%", echo = FALSE}
 plot(plot_fitting6 + theme_bw())
-```  
-The *maxiter* doesn't seem to have any meaningful impact on this study : all RMSE are identical, and computing time seems randomly distributed in a `{r round(max(results_fitting[which(results_fitting$model == "SVD" & results_fitting$parameter == "maxiter"),]$time) - min(results_fitting[which(results_fitting$model == "SVD" & results_fitting$parameter == "maxiter"),]$time),1)}` seconds time span.  
-
-```{r echo=FALSE}
+```
+\paragraph{}
+The *maxiter* doesn't seem to have any meaningful impact on this study : all RMSE are identical, and all computing times seem randomly distributed in a `r round(max(results_fitting[which(results_fitting$model == "SVD" & results_fitting$parameter == "maxiter"),]$time) - min(results_fitting[which(results_fitting$model == "SVD" & results_fitting$parameter == "maxiter"),]$time),1)` seconds time span.
+\paragraph{}
+```{r out.width = "90%", echo = FALSE}
 kable(table_svd_normalize, caption = "SVD model, *normalize* parameter tuning")
-```  
-The *normalize* parameter does not seem to have a sensible impact on RMSE or computing time.  
-
-In conclusion, in this study, the SVD model can be used to reach RMSE $\le$ 0.865. Better accuracy (lower RMSE) can be obtained with higher ranks of SVD approximations ($k >$ 50), but this accuracy has a strong cost in computing time. The *maxiter* and *normalize* factors don't seem to have a meaningful impact on accuracy or computing time.  
+```
+\paragraph{}
+The *normalize* parameter does not seem to have a sensible impact on RMSE or computing time.
+\paragraph{}
+In conclusion, the SVD model can be used to reach RMSE $\le$ 0.865. Better accuracy (lower RMSE) can be obtained with higher ranks of SVD approximations ($k >$ 50), but this accuracy has a strong cost in computing time. The *maxiter* and *normalize* factors don't seem to have a meaningful impact on accuracy or computing time.  
 
 ### 3.2.3. Tuning the LIBMF model
-The LIBMF method has four parameters :  
-* *dim* : the number of latent features (default : 10)  
-* *costp_l2* : the regularization parameter for the user factor (default : 0.01)  
-* *costq_l2* : the regularization parameter for the item factor (default : 0.01)  
-* *nthread* : the number of thread (default : 1)  
+\paragraph{}
+The LIBMF method has four parameters :
 
-```{r echo=FALSE}
+* *dim* : the number of latent features (default : 10)
+* *costp_l2* : the regularization parameter for the user factor (default : 0.01)
+* *costq_l2* : the regularization parameter for the item factor (default : 0.01)
+* *nthread* : the number of threads (default : 1)
+
+\paragraph{}
+```{r out.width = "90%", echo = FALSE}
 plot(plot_fitting1 + theme_bw())
-```  
+```
+\paragraph{}
+The *dim* parameter has a major effect on accuracy and computing time. Higher values yield a better accuracy, with RMSE = `results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "500",]$rmse`, at the cosr of a higher computing time (t = `results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "500",]$time`).
+\paragraph{}
+Very high or very low dim values seem to show diminishing returns in time or accuracy. We can thus design time/RMSE optimization strategies by computing a composite indicator (such as $time \times RMSE^{n}$, with $n$ a fixed weight factor), then finding the lowest value.
+\paragraph{}
+For example, with $n = 2$ :
+```{r out.width = "90%", echo = FALSE}
+plot(plot_fitting1b + theme_bw())
+```
 
-```{r echo=FALSE}
+
+```{r out.width = "90%", echo = FALSE}
 plot(plot_fitting2 + theme_bw())
-```  
-
-```{r echo=FALSE}
+```
+\paragraph{}
+```{r out.width = "90%", echo = FALSE}
 plot(plot_fitting3 + theme_bw())
 ```  
 
-```{r echo=FALSE}
+```{r out.width = "90%", echo=FALSE}
 plot(plot_fitting4 + theme_bw())
 ```  
-
-In conclusion, LIBMF seems to be, by far, the most interesting model, with both excellent accuracy and computing times, even with default parameters.  
-The most impactful way to improve accuracy seems to increase the number of latent features (*dim*). However, this factor has a strong impact on computing time. Our results are perfectly consistent with those obtained by the creators of the LIBMF library in their initial tests. The excellent performance of the LIBMF model allows the user to choose between good accuracy and excellent computing time, or outstanding accuracy in a reasonable time.  
-The user factor (*costp_l2*) and item factor (*costq_l2*) regularization parameters seem to have some minor impact, with lower values giving slightly better accuracy, with little effect in computing time. However, the LIMBF model uses these factors to penalize potential overfiting, and as such, one may want to keep the default values.  
-The number of threads has some impact in computing time. However, this impact looks quite minor. This can probably be explained by the small size of the sample used for fitting purposes and resulting short computation time : the gains obtained by multithreading thus cannot overcome the time and memory used to setup the parallelization (parallelism overhead).
+\paragraph{}
+In conclusion, LIBMF seems to be, by far, the most interesting model, with both excellent accuracy and computing times, even with default parameters.  \paragraph{}
+The most impactful way to improve accuracy seems to increase the number of latent features (*dim*). However, this factor has a strong impact on computing time. Our results are perfectly consistent with those obtained by the creators of the LIBMF library in their initial tests. The excellent performance of the LIBMF model allows the user to choose between good accuracy and excellent computing time, or outstanding accuracy in a reasonable time
+\paragraph{}
+The user  factor (*costp_l2*) and item factor (*costq_l2*) regularization parameters seem to have some minor impact, with lower values giving slightly better accuracy, with little effect in computing time. However, since the LIMBF model uses these factors to penalize potential overfitting, it may be preferable to keep the default values.
+\paragraph{}
+The number of threads has some impact in computing time. However, this impact looks quite minor. This can probably be explained by the small size of the sample used for our fitting purposes and the resulting short computation time : the gains obtained by multithreading thus cannot overcome the time and memory used to setup the parallelization (parallelism overhead).
 
 ## 3.3. Evaluation against the *validation* dataset
+\paragraph{}
+Given the previous benchmarks, we chose the following parameters for our final evaluation, against the *validation* dataset :
 
+* Method : LIMBF
+* Number of latent features (*dim*) : 500
+* Regularization parameter, user factor (*costp_l2*) : 0.01
+* Regularization parameter, user factor (*costq_l2*) : 0.01
+* Number of threads (*nthread*) : 16
+\paragraph{}
 *Section that presents the modeling results and discusses the model performance.*
 
 # 4. Conclusion

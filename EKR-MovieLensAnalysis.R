@@ -234,7 +234,7 @@ plot_time_size3 <- time_result %>%
   ggplot(aes(x = size, y = time, color = model)) +
   ggtitle("Computing time of the 3 best models") +
   xlab("Dataset size") +
-   scale_x_continuous(labels = scales::percent) +
+  scale_x_continuous(labels = scales::percent) +
   ylab("Time (s)") +
   geom_point() +
   geom_line() +
@@ -292,6 +292,8 @@ libmf_q <- data.frame(parameter = "costq_l2", value = as.character(c(0.01*ramp))
 libmf_t <- data.frame(parameter = "nthread", value = as.character(c(1, 2, 4, 8, 16))) #, 32, 64)))   # Number of threads (default = 1)
 libmf_settings <- data.frame(model, rbind(libmf_d, libmf_p, libmf_q, libmf_t))   # Get all LIBMF settings together
 
+### Switcher sur dim = 20* ramp ???
+
 # Set parameters and values for SVD method
 smallramp <- c(0.2, 0.5, 1, 2, 5, 10)
 model <- "SVD"
@@ -341,6 +343,18 @@ for (n in 1:l){
   assign(plotname, plot)     # Assign the plot to the plot_fitting'n' name
 }
 
+# Time/RMSE LIBMF optimization plot
+plot_fitting1b <- results_fitting %>%
+    filter(model == "LIBMF", parameter == "dim") %>%
+    ggplot(aes(x = as.numeric(value), y = as.numeric(running_time)*rmse^2)) +
+    ggtitle("Fitting : Time.RMSE² optimization") +
+    ylab("Time.RMSE²") +
+    xlab("dim factor") +
+    scale_x_continuous(trans="log10") +     # Manually sets scale
+    scale_y_continuous() +     # Manually sets scale 
+    geom_point()
+
+
 # Build report tables for the normalize parameters
 table_pop_normalize <- results_fitting %>% filter(model == "POPULAR") %>% select(value, rmse, time)
 table_svd_normalize <- results_fitting %>% filter(model == "SVD", parameter == "normalize") %>% select(value, rmse, time)
@@ -366,7 +380,7 @@ result
 
 ## Prepare the validation dataset for RMSE computation
 # Load edx and validation datasets
-#load("edxval.RData")    ### A remettre
+load("edxval.RData")
 
 # Remove data that weren't used in this study
 validation <- validation %>% select(userId,movieId,rating)
@@ -375,38 +389,28 @@ edx <- edx %>% select(userId,movieId,rating)
 missing_movieId <- anti_join(edx, validation, by = "movieId")
 missing_movieId <- missing_movieId %>% group_by(movieId) %>% slice(1)
 # Fill these missing lines with empty (NA) ratings
-#missing_movieId$userId <- NA   ### A remettre
-#missing_movieId$rating <- NA   ### A remettre
-#missing_movieId <- as.data.frame(missing_movieId)  ### A remettre
+missing_movieId$userId <- NA
+missing_movieId$rating <- NA
+missing_movieId <- as.data.frame(missing_movieId)
 # Integrate empty rows after the validation set
-#validation <- rbind(validation, missing_movieId)    ###  A remettre
+validation <- rbind(validation, missing_movieId)
 
 # Convert validation set to matrix, then realRatingMatrix (class used by recommenderlab)
 gc(verbose = FALSE)
 validation_rrm <- acast(validation, userId ~ movieId, value.var = "rating")
 validation_rrm <- as(validation, "realRatingMatrix")
 gc(verbose = FALSE)
-rm(edx, validation)     # edx/validation won't be used anymore ; keeping only edx_rrm/validation_rrm
+rm(edx, validation)     # edx/validation won't be used anymore ; keep only edx_rrm/validation_rrm
 
 ###### Enregistrement SETS #####
 save(edx_rrm, validation_rrm, file = "edxval_rrm.RData")
-#load("edxval.RData")
+load("edxval_rrm.RData")
 ######## A ENLEVER +++++ ######
 
-#hist(getRatings(train))
-# Normalized distribution of ratings
-#hist(getRatings(normalize(train, method ="Z-score"))) 
-# Number of movies rated by each user
-#hist(rowCounts(train))
-# Mean rating for each movie
-#hist(colMeans(train))
-
-predictions <- predict(recommend, validation_rrm, type = "ratingMatrix")
-accuracy <- calcPredictionAccuracy(validation_rrm, predictions)
-gc(verbose = FALSE)
-
-rm(predictions)  # Free memory
-gc(verbose = FALSE)
-accuracy["RMSE"]/2
+recommend <- Recommender(data = edx_rrm, method = "LIBMF", param = list(dim = 500, costp_l2 = 0.001, costq_l2 = 0.001, nthread = 16))  # Set recommendation parameters
+prediction <- predict(recommend, edx_validation, type = "ratingMatrix")   # Run prediction
+accuracy <- calcPredictionAccuracy(edx_validation, prediction)   # Compute accuracy
+rmse <- as.numeric(round(accuracy["RMSE"],4))   # Compute RMSE with 4 digits
+rmse
 
 save.image(file = "EKR-MovieLens.RData")
