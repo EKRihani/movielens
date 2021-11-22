@@ -183,11 +183,11 @@ The *dim* parameter has a major effect on accuracy and computing time. Higher va
 \paragraph{}
 Very high or very low dim values seem to show diminishing returns in time or accuracy. We can thus design time/RMSE optimization strategies by computing a composite indicator (such as $time \times RMSE^{n}$, with $n$ a fixed weight factor), then finding the lowest value.
 \paragraph{}
-For example, with $n = 2$ :
+We can for example choose to put a 2:1 weight on RMSE vs time (*n* = 2), to give priority to RMSE -- which is the primary goal of this project -- while also taking computing time into account.
 ```{r out.width = "90%", echo = FALSE}
 plot(plot_fitting1b + theme_bw())
 ```
-
+For *n* = 2, an optimum is reached for $dim \approx 500$.
 
 ```{r out.width = "90%", echo = FALSE}
 plot(plot_fitting2 + theme_bw())

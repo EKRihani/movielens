@@ -105,7 +105,7 @@ rm(total_dataset)    # Free some memory
 
 # Save the validation dataset to an external file (will be used later for our validation set final preparation)
 save(edx, validation, file = "edxval.RData")
-rm(edx, validation)     # Won't be needed until the final RMSE computation
+rm(validation)     # Won't be needed until the final RMSE computation
 gc(verbose = FALSE)   # Free as much memory as possible
 
 # Prepare training dataset for recommenderlab
@@ -189,7 +189,7 @@ methods_sizes <- data.frame(
   size = c(0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 1)   # List of training set sizes
 )
 
-# Build the 9 datasets, run the corresponding  benchmarks
+# Build the 9 datasets, run the corresponding benchmarks
 l <- nrow(methods_sizes)
 for (n in 1:l){
   size <- methods_sizes$size[n]     # Select the size given in the 'n' line
@@ -336,7 +336,7 @@ for (n in 1:l){
 # Time/RMSE LIBMF optimization plot
 plot_fitting1b <- results_fitting %>%
     filter(model == "LIBMF", parameter == "dim") %>%
-    ggplot(aes(x = as.numeric(value), y = as.numeric(running_time)*rmse^2)) +
+    ggplot(aes(x = as.numeric(paste(value)), y = as.numeric(time)*rmse^2)) +
     ggtitle("Fitting : Time.RMSE² optimization") +
     ylab("Time.RMSE²") +
     xlab("dim factor") +
