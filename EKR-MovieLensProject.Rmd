@@ -218,6 +218,7 @@ Given the previous benchmarks, we chose the following parameters for our final e
 * Regularization parameter, user factor (*costq_l2*) : 0.01
 * Number of threads (*nthread*) : 16
 \paragraph{}
+We manage to obtain RMSE = `r final_rmse` in `r final_time`
 *Section that presents the modeling results and discusses the model performance.*
 
 # 4. Conclusion

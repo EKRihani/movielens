@@ -105,7 +105,6 @@ rm(total_dataset)    # Free some memory
 
 # Save the validation dataset to an external file (will be used later for our validation set final preparation)
 save(edx, validation, file = "edxval.RData")
-load("edxval.RData")  ### A SUPPRIMER
 rm(edx, validation)     # Won't be needed until the final RMSE computation
 gc(verbose = FALSE)   # Free as much memory as possible
 
@@ -132,11 +131,11 @@ edx_rrm_test = NULL
 
 # Define function : dataset size-reducing and splitting (train/evaluation)
 dataset_build <- function(train_size){
-  reduction_index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm) * train_size, replace = FALSE)
+  reduction_index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm) * train_size, replace = FALSE) # Build a train_size sized index (training + test)
   edx_rrm_small <- edx_rrm[reduction_index]
-  test_index <- sample(x = seq(1, nrow(edx_rrm_small)), size = nrow(edx_rrm_small)*0.1, replace = FALSE)
-  edx_rrm_train <<- edx_rrm_small[-test_index]
-  edx_rrm_test <<- edx_rrm_small[test_index]
+  test_index <- sample(x = seq(1, nrow(edx_rrm_small)), size = nrow(edx_rrm_small)*0.1, replace = FALSE) # Build a 10% sized test index
+  edx_rrm_train <<- edx_rrm_small[-test_index]  # Split into a 90%-sized training set
+  edx_rrm_test <<- edx_rrm_small[test_index]    # Split into a 10%-sized testing set
 }
 
 # Define function : benchmark (time and RMSE)
@@ -187,7 +186,7 @@ list_methods_3 <- c("POPULAR","LIBMF", "SVD")
 # Define the dataset sizes and corresponding method lists (for 9 runs)
 methods_sizes <- data.frame(
   method = c(1, rep(2,4), rep(3,4)),     # Method list numbers, to be concatenated with "list_methods_"
-  size = c(0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 1)   # Training set sizes
+  size = c(0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.4, 0.6, 1)   # List of training set sizes
 )
 
 # Build the 9 datasets, run the corresponding  benchmarks
@@ -259,10 +258,6 @@ plot_rmse_size <- rmse_result %>%
   geom_vline(xintercept = 0.2, linetype = "dashed", color = "royalblue4", alpha = 0.7) +  # Optimal dataset size
   theme_bw()
 
-### Affichage graphiques (FACULTATIF) ###
-plot_time_size2
-plot_rmse_size
-
 ###############################################
 #    FINE-TUNING SELECTED TRAINING METHODS    #
 ###############################################
@@ -274,10 +269,6 @@ load(file = "EKR-MovieLens.RData")
 
 gc(verbose = FALSE)     # Free memory
 
-#start.time <- Sys.time()  ### A SUPPRIMER
-#end.time <- Sys.time()  ### A SUPPRIMER
-#end.time - start.time   ### A SUPPRIMER
-
 # Set parameters and values for popular method
 model <- "POPULAR"
 pop <- data.frame(parameter = "normalize", value = c("'center'", "'Z-score'"))   # Normalization parameter (default = center)
@@ -286,13 +277,12 @@ popular_settings <- data.frame(model, pop)     # Get all POPULAR settings togeth
 # Set parameters and values for LIBMF method
 ramp <- c(0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50)
 model <- "LIBMF"
-libmf_d <- data.frame(parameter = "dim", value = c(20*ramp))   # Dimension ? (default = 10)
+##### dim = ramp *10 ou *20 ???
+libmf_d <- data.frame(parameter = "dim", value = c(20*ramp))   # Number of latent features (default = 10)
 libmf_p <- data.frame(parameter = "costp_l2", value = as.character(c(0.01*ramp)))   # Regularization parameter for user factor (default = 0.01)
 libmf_q <- data.frame(parameter = "costq_l2", value = as.character(c(0.01*ramp)))   # Regularization parameter for item factor (default = 0.01)
-libmf_t <- data.frame(parameter = "nthread", value = as.character(c(1, 2, 4, 8, 16))) #, 32, 64)))   # Number of threads (default = 1)
+libmf_t <- data.frame(parameter = "nthread", value = as.character(c(1, 2, 4, 8, 16)))  # Number of threads (default = 1)
 libmf_settings <- data.frame(model, rbind(libmf_d, libmf_p, libmf_q, libmf_t))   # Get all LIBMF settings together
-
-### Switcher sur dim = 20* ramp ???
 
 # Set parameters and values for SVD method
 smallramp <- c(0.2, 0.5, 1, 2, 5, 10)
@@ -354,7 +344,6 @@ plot_fitting1b <- results_fitting %>%
     scale_y_continuous() +     # Manually sets scale 
     geom_point()
 
-
 # Build report tables for the normalize parameters
 table_pop_normalize <- results_fitting %>% filter(model == "POPULAR") %>% select(value, rmse, time)
 table_svd_normalize <- results_fitting %>% filter(model == "SVD", parameter == "normalize") %>% select(value, rmse, time)
@@ -362,17 +351,16 @@ table_svd_normalize <- results_fitting %>% filter(model == "SVD", parameter == "
 save.image(file = "EKR-MovieLens.RData")
 
 # RMSE/time of our selected model with the best parameters
-start_time <- Sys.time()     # Start chronometer
-recommend <- Recommender(data = edx_rrm_train, method = "LIBMF", param = list(dim = 500, costp_l2 = 0.01, costq_l2 = 0.01, nthread = 16))  # Set recommendation parameters
-prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")   # Run prediction
-accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction)   # Compute accuracy
-end_time <- Sys.time()     # Stop chronometer
-time <- difftime(end_time, start_time, units = "secs")   # Time difference, unit forced (so mins and secs aren't mixed...)
-time <- round(time,2)   # Rounding to 2 decimals
-rmse <- as.numeric(round(accuracy["RMSE"],4))   # Compute RMSE with 4 digits
-result <- data.frame(rmse, time)     # Combine RMSE and computing time
-result
-
+#start_time <- Sys.time()     # Start chronometer
+#recommend <- Recommender(data = edx_rrm_train, method = "LIBMF", param = list(dim = 500, costp_l2 = 0.01, costq_l2 = 0.01, nthread = 16))  # Set recommendation parameters
+#prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")   # Run prediction
+#accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction)   # Compute accuracy
+#end_time <- Sys.time()     # Stop chronometer
+#time <- difftime(end_time, start_time, units = "secs")   # Time difference, unit forced (so mins and secs aren't mixed...)
+#time <- round(time,2)   # Rounding to 2 decimals
+#rmse <- as.numeric(round(accuracy["RMSE"],4))   # Compute RMSE with 4 digits
+#result <- data.frame(rmse, time)     # Combine RMSE and computing time
+#result
 
 #####################################################
 #    CALCULATING RMSE AGAINST THE VALIDATION SET    #
@@ -403,15 +391,18 @@ validation_rrm <- as(validation_rrm, "realRatingMatrix")
 gc(verbose = FALSE)
 rm(edx, validation)     # edx/validation won't be used anymore ; keep only edx_rrm/validation_rrm
 
-###### Enregistrement SETS #####
-save(edx_rrm, validation_rrm, file = "edxval_rrm.RData")
-#load("edxval_rrm.RData")
-######## A ENLEVER +++++ ######
-
+# Run the final validation benchmark
+start_time <- Sys.time()     # Start chronometer
 recommend <- Recommender(data = edx_rrm, method = "LIBMF", param = list(dim = 500, costp_l2 = 0.01, costq_l2 = 0.01, nthread = 16))  # Set recommendation parameters
 prediction <- predict(recommend, validation_rrm, type = "ratingMatrix")   # Run prediction
-accuracy <- calcPredictionAccuracy(validation_rrm, prediction)   # Compute accuracy
-accuracy
+final_accuracy <- calcPredictionAccuracy(validation_rrm, prediction)   # Compute accuracy
+end_time <- Sys.time()     # Stop chronometer
+final_time <- difftime(end_time, start_time, units = "secs")   # Time difference, unit forced (so mins and secs aren't mixed...)
+final_time <- round(final_time,2)   # Rounding to 2 decimals
+final_rmse <- as.numeric(round(accuracy["RMSE"],4))
+final_time
+final_accuracy
+
 rm(recommend, prediction,edx_rrm, validation_rrm) # Clean memory
 gc(verbose = FALSE)
 save.image(file = "EKR-MovieLens.RData")
