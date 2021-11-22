@@ -104,9 +104,9 @@ column_names <- colnames(total_dataset)
 rm(total_dataset)    # Free some memory
 
 # Save the validation dataset to an external file (will be used later for our validation set final preparation)
-save(validation, file = "edxval.RData")
-load("edxval.RData")
-rm(validation)     # Won't be needed until the final RMSE computation
+save(edx, validation, file = "edxval.RData")
+load("edxval.RData")  ### A SUPPRIMER
+rm(edx, validation)     # Won't be needed until the final RMSE computation
 gc(verbose = FALSE)   # Free as much memory as possible
 
 # Prepare training dataset for recommenderlab
@@ -286,7 +286,7 @@ popular_settings <- data.frame(model, pop)     # Get all POPULAR settings togeth
 # Set parameters and values for LIBMF method
 ramp <- c(0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50)
 model <- "LIBMF"
-libmf_d <- data.frame(parameter = "dim", value = c(10*ramp))   # Dimension ? (default = 10)
+libmf_d <- data.frame(parameter = "dim", value = c(20*ramp))   # Dimension ? (default = 10)
 libmf_p <- data.frame(parameter = "costp_l2", value = as.character(c(0.01*ramp)))   # Regularization parameter for user factor (default = 0.01)
 libmf_q <- data.frame(parameter = "costq_l2", value = as.character(c(0.01*ramp)))   # Regularization parameter for item factor (default = 0.01)
 libmf_t <- data.frame(parameter = "nthread", value = as.character(c(1, 2, 4, 8, 16))) #, 32, 64)))   # Number of threads (default = 1)
@@ -363,7 +363,7 @@ save.image(file = "EKR-MovieLens.RData")
 
 # RMSE/time of our selected model with the best parameters
 start_time <- Sys.time()     # Start chronometer
-recommend <- Recommender(data = edx_rrm_train, method = "LIBMF", param = list(dim = 500, costp_l2 = 0.001, costq_l2 = 0.001, nthread = 16))  # Set recommendation parameters
+recommend <- Recommender(data = edx_rrm_train, method = "LIBMF", param = list(dim = 500, costp_l2 = 0.01, costq_l2 = 0.01, nthread = 16))  # Set recommendation parameters
 prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")   # Run prediction
 accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction)   # Compute accuracy
 end_time <- Sys.time()     # Stop chronometer
@@ -386,6 +386,7 @@ load("edxval.RData")
 validation <- validation %>% select(userId,movieId,rating)
 edx <- edx %>% select(userId,movieId,rating)
 # Detect missing movies in the validation set (present in the training but not in the validation set), keeping 1 movieId for each
+missing_movieId = NULL
 missing_movieId <- anti_join(edx, validation, by = "movieId")
 missing_movieId <- missing_movieId %>% group_by(movieId) %>% slice(1)
 # Fill these missing lines with empty (NA) ratings
@@ -398,19 +399,19 @@ validation <- rbind(validation, missing_movieId)
 # Convert validation set to matrix, then realRatingMatrix (class used by recommenderlab)
 gc(verbose = FALSE)
 validation_rrm <- acast(validation, userId ~ movieId, value.var = "rating")
-validation_rrm <- as(validation, "realRatingMatrix")
+validation_rrm <- as(validation_rrm, "realRatingMatrix")
 gc(verbose = FALSE)
 rm(edx, validation)     # edx/validation won't be used anymore ; keep only edx_rrm/validation_rrm
 
 ###### Enregistrement SETS #####
 save(edx_rrm, validation_rrm, file = "edxval_rrm.RData")
-load("edxval_rrm.RData")
+#load("edxval_rrm.RData")
 ######## A ENLEVER +++++ ######
 
-recommend <- Recommender(data = edx_rrm, method = "LIBMF", param = list(dim = 500, costp_l2 = 0.001, costq_l2 = 0.001, nthread = 16))  # Set recommendation parameters
-prediction <- predict(recommend, edx_validation, type = "ratingMatrix")   # Run prediction
-accuracy <- calcPredictionAccuracy(edx_validation, prediction)   # Compute accuracy
-rmse <- as.numeric(round(accuracy["RMSE"],4))   # Compute RMSE with 4 digits
-rmse
-
+recommend <- Recommender(data = edx_rrm, method = "LIBMF", param = list(dim = 500, costp_l2 = 0.01, costq_l2 = 0.01, nthread = 16))  # Set recommendation parameters
+prediction <- predict(recommend, validation_rrm, type = "ratingMatrix")   # Run prediction
+accuracy <- calcPredictionAccuracy(validation_rrm, prediction)   # Compute accuracy
+accuracy
+rm(recommend, prediction,edx_rrm, validation_rrm) # Clean memory
+gc(verbose = FALSE)
 save.image(file = "EKR-MovieLens.RData")
