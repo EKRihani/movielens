@@ -393,7 +393,7 @@ rm(edx, validation)     # edx/validation won't be used anymore ; keep only edx_r
 
 # Run the final validation benchmark
 start_time <- Sys.time()     # Start chronometer
-recommend <- Recommender(data = edx_rrm, method = "LIBMF", param = list(dim = 500, costp_l2 = 0.01, costq_l2 = 0.01, nthread = 16))  # Set recommendation parameters
+recommend <- Recommender(data = edx_rrm, method = "LIBMF", param = list(dim = 400, costp_l2 = 0.01, costq_l2 = 0.01, nthread = 16))  # Set recommendation parameters
 prediction <- predict(recommend, validation_rrm, type = "ratingMatrix")   # Run prediction
 final_accuracy <- calcPredictionAccuracy(validation_rrm, prediction)   # Compute accuracy
 end_time <- Sys.time()     # Stop chronometer
