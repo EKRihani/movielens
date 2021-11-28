@@ -46,7 +46,7 @@ This dataset was split into a training set (*edx*, 90% of the ratings) that will
 \paragraph*{}
 This project will be articulated around the use of the *recommenderlab* package, which is a very powerful library for building recommendation systems that was recommended by Pr. Rafael Irizarry in his data science course.
 \paragraph*{}
-We'll first briefly introduce the recommenderlab library and its different recommendation systems, then we'll evaluate their respective performances, both in computing time and accuracy, and we'll then optimize the tuning parameters of our best models before using the best model against our validation set.
+We'll first briefly introduce the recommenderlab library and its different recommendation systems, then we'll evaluate their respective performances, both in computing time and accuracy, and we'll then optimize the tuning parameters of our best models before using the best model against our validation set. Code extracts will be included to illustrate how to setup and use the *recommenderlab* package.
 
 \subsection{Preparing data for the recommenderlab package}
 \paragraph*{}
@@ -54,15 +54,38 @@ The recommenderlab package uses several specific data formats, all based on a si
 \paragraph*{}
 Since recommenderlab only uses ratings, one notable limitation of this study is that it will not use some potentially useful information such as the moment of the rating or the year or gender of the movie to improve the accuracy of the analysis.
 \paragraph*{}
-The first step of the data preparation involves the transformation of our dataset into a matrix
+The first step of the data preparation involves the transformation of our *edx* dataset into a $userId \times movieId$ matrix (*edx_rrm*) with *rating* at each user/movie intersection. The acast{reshape2} function can be used to perform this operation. The resulting matrix can then be easily converted in a *realRatingMatrix* format.
+
+```{r, eval = FALSE}
+edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
+edx_rrm <- as(edx_rrm, "realRatingMatrix")
+```
+
+The same operation must be performed on the validation model.
+\paragraph*{}
+Preliminary benchmarks can be run by splitting the training realRatingMatrix (*edx_rrm*) into smaller subsets, or in training/prevalidation datasets by using a regular index sampling method. For example, for a 90/10 training/prevalidation ratio :
+
+```{r, eval = FALSE}
+test_index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm)*0.1, replace = FALSE)
+edx_rrm_train <- edx_rrm[-test_index]
+edx_rrm_test <- edx_rrm[test_index]
+```
+
+While splitting matrices for training/pre-validation purposes makes the code much cleaner and faster, it is *not* strictly equivalent to splitting a list and then building the corresponding matrices. On some very specific datasets, the results obtained in the pre-validation and tuning stages may vary when one uses a matrix-based splitting or a list-based splitting.
+\paragraph*{}
+However, the choice of the list vs matrix splitting strategy during the intermediate benchmarking/tuning steps has no impact on the final RMSE, since the *edx* and *validation* datasets were already created using a list-based splitting method with a fixed seed.
 
 \subsection{Comparing the performance of the different models}
 \paragraph*{}
 Several metrics can be used to evaluate the accuracy of the prediction, such as the Mean Average Error (MAE, consistent with the data units), the Mean Square Error (MSE, penalizes large errors) and the Root Mean Square Error (RMSE, penalizes large errors **and** is consistent with the data units). The metric used in this study to evaluate the accuracy of the prediction is the root-mean-squared error (RMSE), given by : $$\sqrt{ \frac{1}{N} \sum_{m,u}\left(\hat{y}_{m,u} -  y_{m,u}\right)^{2}}$$ With N the number of ratings, $\hat{y}_{m,u}$ the rating (for the movie m, by the user u) that is predicted by the model built with the training set and $y_{m,u}$ the actual rating of the testing set. The lower the RMSE, the more accurate the model.
 \paragraph*{}
-Recommenderlab conveniently provides a *calcPredictionAccuracy* function that computes the MAE, MSE, RMSE.
-\paragraph*{}
-*Section that explains the process and techniques used, including data cleaning, data exploration and visualization, insights gained, and your modeling approach*
+Recommenderlab conveniently provides a *calcPredictionAccuracy* function that computes the MAE, MSE, RMSE. As an example (using a LIBMF method) the recommendation, prediction and accuracy evaluation can be run by :
+
+```{r, eval = FALSE}
+recommendation <- Recommender(data = edx_rrm, method = "LIBMF")
+prediction <- predict(recommendation, validation_rrm, type = "ratingMatrix")
+accuracy <- calcPredictionAccuracy(validation_rrm, prediction)
+```
 
 \subsection{About the recommenderlab methods}
 \paragraph*{}
@@ -78,10 +101,7 @@ In ALS and ALS_implicit optimization strategies, $p_{u}$ is fixed and $q_{m}$ is
 \paragraph*{}
 *LIMBF* is an open-source library was created by Chin et al, from the Taiwan University, in 2014. This algorithm uses a gradient descent approach, which is an iterative algorithm that compute the local gradient of this distance and adjusts the $p_{u}$ and $q_{m}$ *against* the gradient in order to approach a better value. This specific library also aims to make full use of the computing power of modern processors (SSE and AMX instructions, multithreading) in Matrix Factorization.
 \paragraph*{}
-The *SVD* and *SVDF* (Funk SVD) methods are both Singular Value Decomposition methods
-
-\newpage
-\section{Results}
+The *SVD* and *SVDF* (Funk SVD) methods are both Singular Value Decomposition methods **[ A FINIR !!!!]**
 
 \subsection{Performance of the different models}
 \paragraph*{}
@@ -106,7 +126,8 @@ The ALS method seems to be quite slow, but accurate. As expected, we can see a l
 We can use these preliminary results to exclude the slowest and most inaccurate models (SVDF, ALS, ALS_implicit, random) for our next benchmarks with larger datasets.
 \paragraph*{}
 ```{r, echo = FALSE, fig.cap = "Benchmark of the recommenderlab models with 2% and 10% subset sizes"}
-plot(ggarrange(
+plot(
+  ggarrange(
   plot_time_rmse2 + theme_bw(),
   plot_time_rmse3 + ylab("")+ theme_bw()
   )
@@ -118,7 +139,8 @@ These larger datasets seem to confirm the respective places of the SVD, UBCF, LI
 However, one should keep in mind that these results -- both in time and accuracy -- are for very small datasets. We should thus carry on and try to predict the performance of these models on larger datasets.
 \paragraph*{}
 ```{r, echo = FALSE, fig.cap = "Computing time of the 4 best models (linear and quadratic time scales)"}
-plot(ggarrange(
+plot(
+  ggarrange(
   plot_time_size1 + theme_bw(),
   plot_time_size2 + ylab("") + theme_bw(),
   common.legend = TRUE, legend = "right"
@@ -130,7 +152,10 @@ The computing time vs dataset size scatterplot seems to show a lower computing t
 \paragraph*{}
 We can try to predict the computing time for a full-sized dataset :
 ```{r echo = FALSE}
-kable(tsv_models, caption = "Modelling of time vs size behavior of the 4 best models", digits = 4)
+kable(tsv_models,
+  align = "cccccc",
+  caption = "Modelling of time vs size behavior of the 4 best models",
+  digits = c(0,0,3,2,1,3))
 ```
 
 \paragraph*{}
@@ -240,6 +265,12 @@ The user factor (*costp_l2*) and item factor (*costq_l2*) regularization paramet
 \paragraph*{}
 The number of threads has some impact in computing time. However, this impact looks quite minor. This can probably be explained by the small size of the sample used for our fitting purposes and the resulting short computation time : the gains obtained by multithreading thus cannot overcome the time and memory used to setup the parallelization (parallelism overhead).
 
+\paragraph*{}
+*Section that explains the process and techniques used, including data cleaning, data exploration and visualization, insights gained, and your modeling approach*
+
+\newpage
+\section{Results}
+
 \subsection{Evaluation against the \emph{validation} dataset}
 \paragraph*{}
 Given the previous benchmarks, we chose the following parameters for our final evaluation, against the *validation* dataset :
@@ -252,6 +283,7 @@ Given the previous benchmarks, we chose the following parameters for our final e
 \paragraph*{}
 We manage to obtain RMSE = `r final_rmse` in `r final_time`
 *Section that presents the modeling results and discusses the model performance.*
+
 
 \newpage
 \section{Conclusion}
