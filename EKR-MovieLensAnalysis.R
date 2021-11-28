@@ -203,11 +203,11 @@ for (n in 1:l){
 
 # Create 3 RMSE vs time plots
 plot_time_rmse1 <- plotting_time_rmse(benchmark_result1) +
-  ggtitle("Recommanderlab Benchmark (0.5 % subset)")
+  ggtitle("Benchmark (0.5 % subset)")
 plot_time_rmse2 <- plotting_time_rmse(benchmark_result3) +
-  ggtitle("Recommanderlab Benchmark (2 % subset)")
+  ggtitle("Benchmark (2 % subset)")
 plot_time_rmse3 <- plotting_time_rmse(benchmark_result5) +
-  ggtitle("Recommanderlab Benchmark (10 % subset)")
+  ggtitle("Benchmark (10 % subset)")
 
 # Build the size vs time/rmse base for our best models
 time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, benchmark_result4, benchmark_result5) %>%
@@ -217,7 +217,7 @@ time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, be
 # Draw time vs size plots
 plot_time_size1 <- time_result %>%
   ggplot(aes(x = size, y = time, color = model)) +
-  ggtitle("Computing time of the 4 best models") +
+  #ggtitle("Computing time of the 4 best models") +
   xlab("Dataset size") +
   scale_x_continuous(labels = scales::percent) +
   ylab("Time (s)") +
@@ -231,13 +231,41 @@ plot_time_size2 <- plot_time_size1 +
 plot_time_size3 <- time_result %>%
   filter(model != "UBCF") %>%
   ggplot(aes(x = size, y = time, color = model)) +
-  ggtitle("Computing time of the 3 best models") +
+  #ggtitle("Computing time of the 3 best models") +
   xlab("Dataset size") +
   scale_x_continuous(labels = scales::percent) +
   ylab("Time (s)") +
   geom_point() +
   geom_line() +
   theme_bw()
+
+# Model time vs size behavior
+
+tvs_popular <- time_result %>% filter(model == "POPULAR") %>% lm(formula = time ~ size)  # Compute linear model
+tvs_popular_pred <- predict.lm(tvs_popular, newdata = data.frame(1))  # Predict time for size = 1 (full sized dataset)
+rsq_popular <- summary(tvs_popular)[["r.squared"]]  # Extract R squared from summary
+
+tvs_libmf <- time_result %>% filter(model == "LIBMF") %>% lm(formula = time ~ size)
+tvs_libmf_pred <- predict.lm(tvs_libmf, newdata = data.frame(1))
+rsq_libmf <- summary(tvs_libmf)[["r.squared"]]
+
+rsq_svd <- time_result %>% filter(model == "SVD") %>% lm(formula = time ~ size)
+tvs_svd_pred <- predict.lm(tvs_svd, newdata = data.frame(1))
+rsq_svd <- summary(tvs_svd)[["r.squared"]]
+
+time_result <- time_result %>% mutate(sqrt_time = sqrt(time)) # Compute sqrt(time) for UBCF quadratic model
+rsq_ubcf <- time_result %>% filter(model == "UBCF") %>% lm(formula = sqrt_time ~ size)
+tvs_ubcf_pred <- predict.lm(tvs_ubcf, newdata = data.frame(1))^2  # Prediction is squared (quadratic model)
+rsq_ubcf <- summary(tvs_ubcf)[["r.squared"]]
+
+tsv_models <- tibble(
+  Method = c("Popular", "LIBMF", "SVD", "UBCF"),
+  Model = c("Linear", "Linear", "Linear", "Quadratic"),
+  Intercept = c(tvs_popular[["coefficients"]][1], tvs_libmf[["coefficients"]][1], tvs_svd[["coefficients"]][1], tvs_ubcf[["coefficients"]][1]),
+  Slope = c(tvs_popular[["coefficients"]][2], tvs_libmf[["coefficients"]][2], tvs_svd[["coefficients"]][2], tvs_ubcf[["coefficients"]][2]),
+  "Pred. Time (s)" = c(tvs_popular_pred, tvs_libmf_pred, tvs_svd_pred, tvs_ubcf_pred),
+  "R²" = c(rsq_popular, rsq_libmf, rsq_svd, rsq_ubcf)
+)
 
 gc(verbose = FALSE)   # Free memory
 

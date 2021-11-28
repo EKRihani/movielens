@@ -1,7 +1,7 @@
 ---
 title: "MovieLens Dataset Analysis"
 author: "E.K. RIHANI"
-date: "15/11/2021"
+date: "28 november 2021"
 output: 
   pdf_document:
     number_sections: true   # Add section numbering
@@ -15,10 +15,15 @@ indent: true   # Indent paragraphs
 
 ```{r setup, include=FALSE}
 load("EKR-MovieLens.RData")
+if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
+if(!require(ggpubr)) install.packages("ggpubr", repos = "http://cran.us.r-project.org")
+if(!require(rmarkdown)) install.packages("rmarkdown", repos = "http://cran.us.r-project.org")
+if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+library(ggplot2)
+library(ggpubr)   # Combine plots (ggarrange)
+library(rmarkdown)
 library(knitr)
 knitr::opts_chunk$set(echo = TRUE)
-library(ggplot2)
-library(rmarkdown)
 ```
 \newpage
 \section{Overview}
@@ -80,41 +85,58 @@ The *SVD* and *SVDF* (Funk SVD) methods are both Singular Value Decomposition me
 
 \subsection{Performance of the different models}
 \paragraph*{}
-We can create a scatterplot of the RMSE vs compute time of our different models.
+Some models may be faster and/or more accurate than others and thus be more interesting for our study. In order to evaluate the model performance, we will use smaller subsets that will allow quicker computation and comparison of the respective performance of all the recommenderlab methods.
 \paragraph*{}
-```{r echo = FALSE}
+The *edx* dataset was split into smaller subsets that will allow a quicker evaluation of our different models. These smaller subsets are then split into a training (90%) and validation (10%) sets.
+\paragraph*{}
+Training and validation are then performed for each dataset. The computing time of the training, prediction and validation steps is measured. The accuracy of the prediction (RMSE) is also evaluated. We can then create a scatterplot of the RMSE vs compute time of our different models, and plot lines for our RMSE criterias (RMSE > 0.900 and RMSE < 0.865).
+\paragraph*{}
+```{r echo = FALSE, fig.cap = "Benchmark of the recommenderlab models with a 0.5% subset size"}
 plot(plot_time_rmse1 + theme_bw())
 ```
-\paragraph*{}
+
 As one can expect, the random model is among the fastest, but performs quite poorly in terms of accuracy.
 \paragraph*{}
-The Popular, SVD, UBCF and LIBMF are clear winners, being all in the "fast and accurate" quadrant of this plot. SVDF's accuracy is on par with SVD, but SVDF seems to be much slower.
+The Popular, SVD, UBCF and LIBMF are clear winners, being all in the "fast and accurate" quadrant of our RMSE vs time plot. The accuracy of the SVDF method is comparable with the accuracy of SVD, but SVDF seems to be much slower.
 \paragraph*{}
-The ALS method seems to be quite slow, but accurate. As expected, we see a large difference between explicit and implicit ALS methods. Our data are explicit : we use (known) user ratings to predict (unknown) user ratings. Force-feeding these explicit data in an method that was designed around implicit data gives results that are both extremely slow and very inaccurate ($RMSE_{ALSimplicit} > RMSE_{random}$). These results underline the importance of understanding how these models work, and not just treat them as "black boxes".
+IBCF was not included in this study. The computing time and RMSE were both *extremely* high. With default settings, this model proved to be completely inadequate for our dataset.
 \paragraph*{}
-```{r, fig.show = "hold", out.width = "50%", echo = FALSE}
-par(mar = c(4, 4, .1, .1))
-  plot(plot_time_rmse2 + theme_bw())
-  plot(plot_time_rmse3 + theme_bw())
+The ALS method seems to be quite slow, but accurate. As expected, we can see a large difference between explicit and implicit ALS methods. Our data are explicit : we use (known) user ratings to predict (unknown) user ratings. Force-feeding these explicit data in an method that was designed around implicit data gives results that are both very slow and inaccurate ($RMSE_{ALSimplicit} > RMSE_{random}$). These predictable results underline the importance of understanding how these models work, and not just treat them as "black boxes".
+\paragraph*{}
+We can use these preliminary results to exclude the slowest and most inaccurate models (SVDF, ALS, ALS_implicit, random) for our next benchmarks with larger datasets.
+\paragraph*{}
+```{r, echo = FALSE, fig.cap = "Benchmark of the recommenderlab models with 2% and 10% subset sizes"}
+plot(ggarrange(
+  plot_time_rmse2 + theme_bw(),
+  plot_time_rmse3 + ylab("")+ theme_bw()
+  )
+)
+```
+
+These larger datasets seem to confirm the respective places of the SVD, UBCF, LIBMF and Popular methods : SVD and Popular are fast but not very accurate, UBCF is quite accurate but slow. LIBMF seems to be the most interesting model, being both very accurate and fast.
+\paragraph*{}
+However, one should keep in mind that these results -- both in time and accuracy -- are for very small datasets. We should thus carry on and try to predict the performance of these models on larger datasets.
+\paragraph*{}
+```{r, echo = FALSE, fig.cap = "Computing time of the 4 best models (linear and quadratic time scales)"}
+plot(ggarrange(
+  plot_time_size1 + theme_bw(),
+  plot_time_size2 + ylab("") + theme_bw(),
+  common.legend = TRUE, legend = "right"
+  )
+)
 ```
 \paragraph*{}
-Bigger datasets seem to confirm the respective places of the SVD, UBCF, LIBMF and Popular methods.
+The computing time vs dataset size scatterplot seems to show a lower computing time for SVD, Popular and LIBMF models, while the UBCF model appears to be considerably slower. Furthermore, the computing time of this model seems to exhibit a quadratic behavior (right plot), whereas the other methods seem to be linear.
 \paragraph*{}
-```{r, fig.show = "hold", out.width = "50%", echo = FALSE}
-par(mar = c(4, 4, .2, .1))
-  plot(plot_time_size1 + theme_bw())
-  plot(plot_time_size2 + theme_bw())
+We can try to predict the computing time for a full-sized dataset :
+```{r echo = FALSE}
+kable(tsv_models, caption = "Modelling of time vs size behavior of the 4 best models", digits = 4)
 ```
-\paragraph*{}
-The computing time vs dataset size scatterplot seems to show a lower computing time for SVD, Popular and LIBMF models, while the UBCF model appears to be considerably slower. Furthermore, the computing time of this model seems to exhibit a quadratic behavior, whereas the others seem to be linear.
+
 \paragraph*{}
 The UBCF model, while quite accurate, will probably be too slow for this study.
 \paragraph*{}
-```{r out.width = "90%", echo = FALSE}
-plot(plot_time_size3 + theme_bw())
-```
-\paragraph*{}
-We will thus select the LIBMF, POPULAR and SVD models and will tune them to improve their performance.
+We will thus select the LIBMF, POPULAR and SVD models. Since all the previous results were obtained with default settings, the next step will be to tune them in order to improve their performance.
 
 \subsection{Tuning the models}
 
@@ -185,32 +207,36 @@ The LIBMF method has four parameters :
 plot(plot_fitting1 + theme_bw())
 ```
 \paragraph*{}
-The *dim* parameter has a major effect on accuracy and computing time. Higher values yield a better accuracy, with RMSE = `r results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "400",]$rmse`, at the cosr of a higher computing time (t = `r results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "400",]$time`).
+The *dim* parameter has a major effect on accuracy and computing time. Higher values ($dim = 1000$) yield a better accuracy, with RMSE = `r results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "1000",]$rmse`, at the cost of a higher computing time (t = `r results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "1000",]$time`).
 \paragraph*{}
 Very high or very low dim values seem to show diminishing returns in time or accuracy. We can thus design time/RMSE optimization strategies by computing a composite indicator (such as $time \times RMSE^{n}$, with $n$ a fixed weight factor), then finding the lowest value.
 \paragraph*{}
-We can for example choose to put a 2:1 weight on RMSE vs time (*n* = 2), to give priority to RMSE -- which is the primary goal of this project -- while also taking computing time into account.
+We can for example choose to put a 2:1 weight on RMSE vs time (*n* = 2), to reflect the higher priority given to RMSE -- which is the primary goal of this project -- while also taking computing time into account.
 ```{r out.width = "90%", echo = FALSE}
 plot(plot_fitting1b + theme_bw())
-```  
-For *n* = 2, an optimum is reached for $dim \approx 400$.
-
-```{r out.width = "90%", echo = FALSE}
-plot(plot_fitting2 + theme_bw())
 ```
 \paragraph*{}
-```{r out.width = "90%", echo = FALSE}
-plot(plot_fitting3 + theme_bw())
-```  
+For *n* = 2, an optimum is reached with $dim \approx 400$.
+\paragraph*{}
+```{r, echo = FALSE, fig.cap = "Fitting of LIBMF method, user (costp_l2) and item (costq_l2) factor regularization parameters"}
+plot(ggarrange(
+  plot_fitting2 + ggtitle("Fitting: LIBMF method, costp_l2") + theme_bw(),
+  plot_fitting3 + ggtitle("Fitting: LIBMF method, costp_l2") + ylab("") + theme_bw()
+  )
+)
+```
 
+\paragraph*{}
 ```{r out.width = "90%", echo=FALSE}
 plot(plot_fitting4 + theme_bw())
-```  
+```
+
 \paragraph*{}
-In conclusion, LIBMF seems to be, by far, the most interesting model, with both excellent accuracy and computing times, even with default parameters.  \paragraph*{}
+In conclusion, LIBMF seems to be, by far, the most interesting model, with both excellent accuracy and computing times, even with default parameters.
+\paragraph*{}
 The most impactful way to improve accuracy seems to increase the number of latent features (*dim*). However, this factor has a strong impact on computing time. Our results are perfectly consistent with those obtained by the creators of the LIBMF library in their initial tests. The excellent performance of the LIBMF model allows the user to choose between good accuracy and excellent computing time, or outstanding accuracy in a reasonable time
 \paragraph*{}
-The user  factor (*costp_l2*) and item factor (*costq_l2*) regularization parameters seem to have some minor impact, with lower values giving slightly better accuracy, with little effect in computing time. However, since the LIMBF model uses these factors to penalize potential overfitting, it may be preferable to keep the default values.
+The user factor (*costp_l2*) and item factor (*costq_l2*) regularization parameters seem to have some minor impact, with lower values giving slightly better accuracy, with little effect in computing time. However, since the LIMBF model uses these factors to penalize potential overfitting, it may be preferable to keep the default values.
 \paragraph*{}
 The number of threads has some impact in computing time. However, this impact looks quite minor. This can probably be explained by the small size of the sample used for our fitting purposes and the resulting short computation time : the gains obtained by multithreading thus cannot overcome the time and memory used to setup the parallelization (parallelism overhead).
 
