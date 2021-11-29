@@ -166,15 +166,14 @@ plotting_time_rmse <- function(benchresult){
     ggplot(aes(x = time, y = RMSE, label = model)) +
       xlab("Time (s)") +
       ylab("Error (RMSE)") +
-      geom_point() +
       scale_x_continuous(limits = c(0,NA)) +
-      geom_text_repel() +
       geom_hline(yintercept = 0.9, linetype = "dashed", color = "darkred", alpha = 0.4) +   # Minimal objective
       geom_hline(yintercept = 0.865, linetype = "dashed", color = "darkgreen", alpha = 0.4)   # Optimal objective 
 }
 
-# Create list of tested models (no IBCF)
-list_methods_1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF")
+# Create list of tested models
+list_methods_1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF") # No IBCF
+# list_methods_1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF", "IBCF") # With IBCF, for VERY powerful computers
 list_methods_2 <- c("POPULAR", "LIBMF", "SVD", "UBCF")
 list_methods_3 <- c("POPULAR","LIBMF", "SVD")
 
@@ -203,10 +202,16 @@ for (n in 1:l){
 
 # Create 3 RMSE vs time plots
 plot_time_rmse1 <- plotting_time_rmse(benchmark_result1) +
+  geom_point(data = benchmark_result1 %>% filter(model != "IBCF")) + # Don't display IBCF (very high time)
+  geom_text_repel(data = benchmark_result1 %>% filter(model != "IBCF")) +
   ggtitle("Benchmark (0.5 % subset)")
 plot_time_rmse2 <- plotting_time_rmse(benchmark_result3) +
+  geom_point() +
+  geom_text_repel() +
   ggtitle("Benchmark (2 % subset)")
 plot_time_rmse3 <- plotting_time_rmse(benchmark_result5) +
+  geom_point() +
+  geom_text_repel() +
   ggtitle("Benchmark (10 % subset)")
 
 # Build the size vs time/rmse base for our best models
@@ -249,12 +254,12 @@ tvs_libmf <- time_result %>% filter(model == "LIBMF") %>% lm(formula = time ~ si
 tvs_libmf_pred <- predict.lm(tvs_libmf, newdata = data.frame(1))
 rsq_libmf <- summary(tvs_libmf)[["r.squared"]]
 
-rsq_svd <- time_result %>% filter(model == "SVD") %>% lm(formula = time ~ size)
+tvs_svd <- time_result %>% filter(model == "SVD") %>% lm(formula = time ~ size)
 tvs_svd_pred <- predict.lm(tvs_svd, newdata = data.frame(1))
 rsq_svd <- summary(tvs_svd)[["r.squared"]]
 
 time_result <- time_result %>% mutate(sqrt_time = sqrt(time)) # Compute sqrt(time) for UBCF quadratic model
-rsq_ubcf <- time_result %>% filter(model == "UBCF") %>% lm(formula = sqrt_time ~ size)
+tvs_ubcf <- time_result %>% filter(model == "UBCF") %>% lm(formula = sqrt_time ~ size)
 tvs_ubcf_pred <- predict.lm(tvs_ubcf, newdata = data.frame(1))^2  # Prediction is squared (quadratic model)
 rsq_ubcf <- summary(tvs_ubcf)[["r.squared"]]
 
