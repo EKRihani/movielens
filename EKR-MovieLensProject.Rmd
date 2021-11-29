@@ -19,10 +19,12 @@ if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-proj
 if(!require(ggpubr)) install.packages("ggpubr", repos = "http://cran.us.r-project.org")
 if(!require(rmarkdown)) install.packages("rmarkdown", repos = "http://cran.us.r-project.org")
 if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
+if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
 library(ggplot2)
 library(ggpubr)   # Combine plots (ggarrange)
 library(rmarkdown)
 library(knitr)
+library(tidyverse)
 knitr::opts_chunk$set(echo = TRUE)
 ```
 \newpage
@@ -111,17 +113,24 @@ The *edx* dataset was split into smaller subsets that will allow a quicker evalu
 \paragraph*{}
 Training and validation are then performed for each dataset. The computing time of the training, prediction and validation steps is measured. The accuracy of the prediction (RMSE) is also evaluated. We can then create a scatterplot of the RMSE vs compute time of our different models, and plot lines for our RMSE criterias (RMSE > 0.900 and RMSE < 0.865).
 \paragraph*{}
-```{r echo = FALSE, fig.cap = "Benchmark of the recommenderlab models with a 0.5% subset size"}
+```{r echo = FALSE, fig.cap = "Benchmark of the recommenderlab methods with a 0.5% subset size"}
 plot(plot_time_rmse1 + theme_bw())
+```
+```{r echo = FALSE}
+kable(benchmark_result1 %>% select("RMSE", "time"),
+  align = "cc",
+  caption = "Benchmark of the methods on a 0.5% subset")
 ```
 
 As one can expect, the random model is among the fastest, but performs quite poorly in terms of accuracy.
 \paragraph*{}
 The Popular, SVD, UBCF and LIBMF are clear winners, being all in the "fast and accurate" quadrant of our RMSE vs time plot. The accuracy of the SVDF method is comparable with the accuracy of SVD, but SVDF seems to be much slower.
 \paragraph*{}
-IBCF was not included in this study. The computing time and RMSE were both *extremely* high. With default settings, this model proved to be completely inadequate for our dataset.
+The ALS method seems to be quite slow, but accurate. As expected, we can see a large difference between explicit and implicit ALS methods. Our data are explicit : we use (known) user ratings to predict (unknown) user ratings. Force-feeding these explicit data in an method that was designed around implicit data gives results that are both very slow and inaccurate ($RMSE_{ALSimplicit} > RMSE_{random}$). 
 \paragraph*{}
-The ALS method seems to be quite slow, but accurate. As expected, we can see a large difference between explicit and implicit ALS methods. Our data are explicit : we use (known) user ratings to predict (unknown) user ratings. Force-feeding these explicit data in an method that was designed around implicit data gives results that are both very slow and inaccurate ($RMSE_{ALSimplicit} > RMSE_{random}$). These predictable results underline the importance of understanding how these models work, and not just treat them as "black boxes".
+As said before, the UBCF method performed quite well. However, the IBCF was so slow it wasn't included in the plot. This can look quite suprising at first. However, the UBCF is based on users, while the IBCF is based on items (movies). In other words, UBCF is row-based, while IBCF is column-based : since we defined our smaller datasets as a smaller matrix row-wise, the UBCF worked on 0.5% of the rows, while the IBCF method had to work on 100% of the columns, hence the poor performance, both on time and accuracy criterias.
+\paragraph*{}
+The ALS_implicit and IBCF results can look quite surprising at first, but were predictable in the end. This underline the importance of understanding how these methods work, and not just treat them as "black boxes" or "magic bullets".
 \paragraph*{}
 We can use these preliminary results to exclude the slowest and most inaccurate models (SVDF, ALS, ALS_implicit, random) for our next benchmarks with larger datasets.
 \paragraph*{}
