@@ -24,16 +24,6 @@ ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings
                  col.names = c("userId", "movieId", "rating", "timestamp"))
 movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
 
-##### DEBUT A ENLEVER ####
-#dl <- "~/projects/movielens/ml-1m.zip"   # /!\ MINI dataset
-#ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-1m/ratings.dat"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-1m/movies.dat")), "\\::", 3)
-
-#dl <- "~/projects/movielens/ml-latest-small.zip"   # /!\ MICRO dataset
-#ratings <- fread(text = gsub(",", "\t", readLines(unzip(dl, "ml-latest-small/ratings.csv"))), col.names = c("userId", "movieId", "rating", "timestamp"))
-#movies <- str_split_fixed(readLines(unzip(dl, "ml-latest-small/movies.csv")), "\\,", 3)
-##### FIN A ENLEVER ####
-
 colnames(movies) <- c("movieId", "title", "genres")
 
 # if using R 3.6 or earlier:
@@ -78,7 +68,7 @@ if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-proj
 if(!require(ggrepel)) install.packages("ggrepel", repos = "http://cran.us.r-project.org")
 if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
 if(!require(stringr)) install.packages("stringr", repos = "http://cran.us.r-project.org")
-if(!require(parallel)) install.packages("parallel", repos = "http://cran.us.r-project.org")
+#if(!require(parallel)) install.packages("parallel", repos = "http://cran.us.r-project.org")
 
 # Load required packages/libraries
 library(reshape2)       # For acast function
@@ -86,7 +76,7 @@ library(ggplot2)        # For pretty graphics
 library(ggrepel)        # For repelled labels on graphics
 library(recommenderlab) # For data analysis
 library(stringr)        # For parameters text (tuning stage)
-library(parallel)    # For multithread LIBMF ?
+#library(parallel)    # For multithread LIBMF ?
 
 # Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during our Matrix/realRatingMatrix conversion...
 memory.limit(size = 50000)
@@ -173,7 +163,7 @@ plotting_time_rmse <- function(benchresult){
 
 # Create list of tested models
 list_methods_1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF") # No IBCF
-# list_methods_1 <- c("RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF", "IBCF") # With IBCF, for VERY powerful computers
+# list_methods_1 <- c("IBCF", "RANDOM", "POPULAR", "LIBMF", "SVD", "SVDF", "ALS", "ALS_implicit", "UBCF") # With IBCF, for VERY powerful computers
 list_methods_2 <- c("POPULAR", "LIBMF", "SVD", "UBCF")
 list_methods_3 <- c("POPULAR","LIBMF", "SVD")
 
@@ -310,7 +300,6 @@ popular_settings <- data.frame(model, pop)     # Get all POPULAR settings togeth
 # Set parameters and values for LIBMF method
 ramp <- c(0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50)
 model <- "LIBMF"
-##### dim = ramp *10 ou *20 ???
 libmf_d <- data.frame(parameter = "dim", value = c(20*ramp))   # Number of latent features (default = 10)
 libmf_p <- data.frame(parameter = "costp_l2", value = as.character(c(0.01*ramp)))   # Regularization parameter for user factor (default = 0.01)
 libmf_q <- data.frame(parameter = "costq_l2", value = as.character(c(0.01*ramp)))   # Regularization parameter for item factor (default = 0.01)
@@ -383,46 +372,44 @@ table_svd_normalize <- results_fitting %>% filter(model == "SVD", parameter == "
 
 save.image(file = "EKR-MovieLens.RData")
 
-# RMSE/time of our selected model with the best parameters
-#start_time <- Sys.time()     # Start chronometer
-#recommend <- Recommender(data = edx_rrm_train, method = "LIBMF", param = list(dim = 500, costp_l2 = 0.01, costq_l2 = 0.01, nthread = 16))  # Set recommendation parameters
-#prediction <- predict(recommend, edx_rrm_test, type = "ratingMatrix")   # Run prediction
-#accuracy <- calcPredictionAccuracy(edx_rrm_test,prediction)   # Compute accuracy
-#end_time <- Sys.time()     # Stop chronometer
-#time <- difftime(end_time, start_time, units = "secs")   # Time difference, unit forced (so mins and secs aren't mixed...)
-#time <- round(time,2)   # Rounding to 2 decimals
-#rmse <- as.numeric(round(accuracy["RMSE"],4))   # Compute RMSE with 4 digits
-#result <- data.frame(rmse, time)     # Combine RMSE and computing time
-#result
 
 #####################################################
 #    CALCULATING RMSE AGAINST THE VALIDATION SET    #
 #####################################################
 
-## Prepare the validation dataset for RMSE computation
 # Load edx and validation datasets
 load("edxval.RData")
 
-# Remove data that weren't used in this study
-validation <- validation %>% select(userId,movieId,rating)
-edx <- edx %>% select(userId,movieId,rating)
+# Remove data that weren't used in this study  /!\ A VIRER, AUCUNE MODIF AUTORISEE /!\
+#validation <- validation %>% select(userId,movieId,rating)
+#edx <- edx %>% select(userId,movieId,rating)
 # Detect missing movies in the validation set (present in the training but not in the validation set), keeping 1 movieId for each
-missing_movieId = NULL
-missing_movieId <- anti_join(edx, validation, by = "movieId")
-missing_movieId <- missing_movieId %>% group_by(movieId) %>% slice(1)
+#missing_movieId = NULL
+#missing_movieId <- anti_join(edx, validation, by = "movieId")
+#missing_movieId <- missing_movieId %>% group_by(movieId) %>% slice(1)
 # Fill these missing lines with empty (NA) ratings
-missing_movieId$userId <- NA
-missing_movieId$rating <- NA
-missing_movieId <- as.data.frame(missing_movieId)
-# Integrate empty rows after the validation set
-validation <- rbind(validation, missing_movieId)
+#missing_movieId$userId <- NA
+#missing_movieId$rating <- NA
+#missing_movieId <- as.data.frame(missing_movieId)
+# Integrate empty rows after the validation set /!\ NOOOOOPE, ENLEVER LIGNES DANS EDX /!\
+#validation <- rbind(validation, missing_movieId)
+
+# Remove movies that aren't used in the validation set (adding lines to the validation set is forbidden)
+edx <- semi_join(edx, validation, by = "movieId")
 
 # Convert validation set to matrix, then realRatingMatrix (class used by recommenderlab)
 gc(verbose = FALSE)
 validation_rrm <- acast(validation, userId ~ movieId, value.var = "rating")
 validation_rrm <- as(validation_rrm, "realRatingMatrix")
 gc(verbose = FALSE)
-rm(edx, validation)     # edx/validation won't be used anymore ; keep only edx_rrm/validation_rrm
+
+# Convert edx set to matrix, then realRatingMatrix (class used by recommenderlab)
+gc(verbose = FALSE)
+edx_rrm <- acast(edx2, userId ~ movieId, value.var = "rating")
+edx_rrm <- as(edx_rrm, "realRatingMatrix")
+gc(verbose = FALSE)
+
+rm(edx, edx2, validation)     # edx/validation won't be used anymore ; keep only edx_rrm/validation_rrm
 
 # Run the final validation benchmark
 start_time <- Sys.time()     # Start chronometer
@@ -432,7 +419,7 @@ final_accuracy <- calcPredictionAccuracy(validation_rrm, prediction)   # Compute
 end_time <- Sys.time()     # Stop chronometer
 final_time <- difftime(end_time, start_time, units = "secs")   # Time difference, unit forced (so mins and secs aren't mixed...)
 final_time <- round(final_time,2)   # Rounding to 2 decimals
-final_rmse <- as.numeric(round(accuracy["RMSE"],4))
+final_rmse <- as.numeric(round(final_accuracy["RMSE"],4))
 final_time
 final_accuracy
 

@@ -1,7 +1,7 @@
 ---
 title: "MovieLens Dataset Analysis"
 author: "E.K. RIHANI"
-date: "28 november 2021"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   pdf_document:
     number_sections: true   # Add section numbering
@@ -10,6 +10,20 @@ output:
 
 header-includes:
 indent: true   # Indent paragraphs
+bibliography: packages.bib #, references.bib
+references:
+  - id: test2000
+    title: Le test du test dans le test
+    author: 
+    - family: Testeur
+      given: Johnny
+    url: http://dx.doi.org/10.1038/nmat3283
+    DOI: 10.1038/nmat3283
+    publisher: Journal of Tested tests
+    type: article-journal
+    issued:
+      year: 2018
+csl: https://www.zotero.org/styles/vancouver-superscript
 #- \usepackage{indentfirst} # Indent first line of each paragraph
 ---
 
@@ -26,18 +40,21 @@ library(rmarkdown)
 library(knitr)
 library(tidyverse)
 knitr::opts_chunk$set(echo = TRUE)
+knitr::write_bib(c("tidyverse", "caret", "data.table", "reshape2", "ggplot2", "ggrepel", "recommenderlab", "stringr", "ggpubr", "rmarkdown", "knitr"), "packages.bib")
 ```
 \newpage
 \section{Overview}
 \subsection{Goal of the study}
 \paragraph*{}
-The aim of this study is to analyze a MovieLens dataset and try to create a model that can predict users' future preferences based on their current preferences, using data analysis and machine learning techniques.
+The aim of this study[@test2000] is to analyze a MovieLens dataset and try to create a model that can predict users' future preferences based on their current preferences, using data analysis and machine learning techniques.
 
 \subsection{The dataset}
 \paragraph*{}
 The MovieLens datasets were created by the GroupLens research lab, from the Department of Computer Science and Engineering at the University of Minnesota.
 \paragraph*{}
-The dataset used for this study is the 10M dataset (<https://grouplens.org/datasets/movielens/10m/>). The 10M MovieLens dataset contains `r total_number_ratings` ratings for `r total_number_movies` movies, from `r total_number_users` users, which translates into a `r total_number_movies` $\times$ `r total_number_users` matrix, with `r round(total_number_movies*total_number_users/1e6, 1)` millions cells, `r round((1 - total_number_ratings/(total_number_movies*total_number_users))*100, 1)` % of which are empty. In layman's terms, the goal of this project is to fill these empty cells as accurately as possible.
+The dataset used for this study is the 10M dataset (<https://grouplens.org/datasets/movielens/10m/>). The 10M MovieLens dataset contains `r total_number_ratings` ratings for `r total_number_movies` movies, from `r total_number_users` users, which translates into a `r total_number_movies` $\times$ `r total_number_users` matrix, with `r round(total_number_movies*total_number_users/1e6, 1)` millions cells, `r round((1 - total_number_ratings/(total_number_movies*total_number_users))*100, 1)` % of which are empty. 
+\paragraph*{}
+In layman's terms, the goal of this project is to fill these empty cells as accurately as possible.
 \paragraph*{}
 The provided information includes the user's unique ID (`r column_names[1]`), the movie's unique ID (`r column_names[2]`), the rating given by the user (`r column_names[3]`), the timestamp of the rating (`r column_names[4]`), the title of the movie (`r column_names[5]`) and its genre (`r column_names[6]`).
 \paragraph*{}
@@ -48,22 +65,41 @@ This dataset was split into a training set (*edx*, 90% of the ratings) that will
 \paragraph*{}
 This project will be articulated around the use of the *recommenderlab* package, which is a very powerful library for building recommendation systems that was recommended by Pr. Rafael Irizarry in his data science course.
 \paragraph*{}
-We'll first briefly introduce the recommenderlab library and its different recommendation systems, then we'll evaluate their respective performances, both in computing time and accuracy, and we'll then optimize the tuning parameters of our best models before using the best model against our validation set. Code extracts will be included to illustrate how to setup and use the *recommenderlab* package.
+The configuration will be described, since it can have an impact on results and performance.Then recommenderlab library and its different recommendation systems will be briefly introduced. Their respective performances will be evaluated, both in computing time and accuracy, in order to select the most promising models. Their tuning parameters will then be tuned, and the best model will finally be used against the validation set.
+\paragraph*{}
+Code extracts will be included to illustrate how to setup and use the *recommenderlab* package.
 
+\subsection{Computer and R configuration}
+\paragraph*{}
+The code, benchmarks and report were run on the following computer configuration :
+
+* CPU : AMD Ryzen 5 5600G
+* RAM : 2x16 GB DDR4-3200
+* SSD : Crucial P5 M2 NVMe
+* OS : Xubuntu Linux
+* R : version 4.1.0
+* Packages : tidyverse[@R-tidyverse] (v1.3.1), caret[@R-caret] (v6.0-88), data.table[@R-data.table] (v1.14.0), reshape2[@R-reshape2] (v1.4.4), ggplot2[@R-ggplot2] (v3.3.5), ggrepel[@R-ggrepel] (v0.9.1), recommenderlab[@R-recommenderlab] (v0.2-7), stringr[@R-stringr] (v1.4.0), **[parallel????]**, ggpubr[@R-ggpubr] (v0.4.0), rmarkdown[@R-rmarkdown] (v2.11), knitr[@R-knitr] (v1.34).
+
+\paragraph*{}
+The code was also tested on a Windows 7 x64 SP1 computer with 16 GB RAM. It was not tested on any Mac OS system.
 \subsection{Preparing data for the recommenderlab package}
 \paragraph*{}
-The recommenderlab package uses several specific data formats, all based on a single sparse matrix, where the ratings (binary or numeric) are located at the intersection of the user row (*userId*) row and the rated object (*movieId*) column. Since our rating are numeric, this study will use the *realRatingMatrix* format.
+The recommenderlab package uses several specific data formats, all based on a single sparse matrix, where the ratings (binary or numeric) are located at the intersection of the user (*userId*) row and the rated object (*movieId*) column. Because ratings are numeric, this study will use the *realRatingMatrix* format.
 \paragraph*{}
 Since recommenderlab only uses ratings, one notable limitation of this study is that it will not use some potentially useful information such as the moment of the rating or the year or gender of the movie to improve the accuracy of the analysis.
 \paragraph*{}
-The first step of the data preparation involves the transformation of our *edx* dataset into a $userId \times movieId$ matrix (*edx_rrm*) with *rating* at each user/movie intersection. The acast{reshape2} function can be used to perform this operation. The resulting matrix can then be easily converted in a *realRatingMatrix* format.
+The first step of the data preparation involves the transformation of the *edx* dataset into a $userId \times movieId$ matrix (*edx_rrm*) with *rating* at each user/movie intersection. The acast::reshape2 function can be used to perform this operation. The resulting matrix can then be easily converted in a *realRatingMatrix* format.
 
 ```{r, eval = FALSE}
 edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
 edx_rrm <- as(edx_rrm, "realRatingMatrix")
 ```
 
-The same operation must be performed on the validation model.
+The same operation must be performed on the validation data set. To make sure the *validation* isn't used until the final validation, we explicitly chose not to use it *at all* until the final steps.
+\paragraph*{}
+However, some recommenderlab models may encounter problems if the training set and the validation sets don't have the same items (movies). This can be the case if a list-splitting method is used, because some items can be present in the training set, but not in the validation set.
+\paragraph*{}
+Two equivalent strategies can be used : either add the missing items with *NA* ratings in the validation set or remove the useless items in the training set. Since modifications of the validation set are explicitly forbidden, the only option is to remove useless items in the training set, i.e. exclude from the *edx* set all movies that don't exist in the *validation* set, before building the realRatingMatrix.
 \paragraph*{}
 Preliminary benchmarks can be run by splitting the training realRatingMatrix (*edx_rrm*) into smaller subsets, or in training/prevalidation datasets by using a regular index sampling method. For example, for a 90/10 training/prevalidation ratio :
 
@@ -77,7 +113,7 @@ While splitting matrices for training/pre-validation purposes makes the code muc
 \paragraph*{}
 However, the choice of the list vs matrix splitting strategy during the intermediate benchmarking/tuning steps has no impact on the final RMSE, since the *edx* and *validation* datasets were already created using a list-based splitting method with a fixed seed.
 
-\subsection{Comparing the performance of the different models}
+\subsection{Performance metrics}
 \paragraph*{}
 Several metrics can be used to evaluate the accuracy of the prediction, such as the Mean Average Error (MAE, consistent with the data units), the Mean Square Error (MSE, penalizes large errors) and the Root Mean Square Error (RMSE, penalizes large errors **and** is consistent with the data units). The metric used in this study to evaluate the accuracy of the prediction is the root-mean-squared error (RMSE), given by : $$\sqrt{ \frac{1}{N} \sum_{m,u}\left(\hat{y}_{m,u} -  y_{m,u}\right)^{2}}$$ With N the number of ratings, $\hat{y}_{m,u}$ the rating (for the movie m, by the user u) that is predicted by the model built with the training set and $y_{m,u}$ the actual rating of the testing set. The lower the RMSE, the more accurate the model.
 \paragraph*{}
@@ -88,6 +124,15 @@ recommendation <- Recommender(data = edx_rrm, method = "LIBMF")
 prediction <- predict(recommendation, validation_rrm, type = "ratingMatrix")
 accuracy <- calcPredictionAccuracy(validation_rrm, prediction)
 ```
+
+Another very useful and easy to evaluate metric is the time needed to execute the recommendation, prediction and accuracy steps. The code used in this study is quite simple :
+```{r, eval = FALSE}
+start_time <- Sys.time()
+# Insert_code_here #
+end_time <- Sys.time()
+running_time <- difftime(end_time, start_time, units = "secs")
+```
+The *units* argument in the *difftime* function ensures all units are kept consistent. Mixing minutes and seconds can be problematic, especially if these results are used for plotting.
 
 \subsection{About the recommenderlab methods}
 \paragraph*{}
@@ -289,8 +334,9 @@ Given the previous benchmarks, we chose the following parameters for our final e
 * Regularization parameter, user factor (*costp_l2*) : 0.01
 * Regularization parameter, user factor (*costq_l2*) : 0.01
 * Number of threads (*nthread*) : 16
-\paragraph*{}
-We manage to obtain RMSE = `r final_rmse` in `r final_time`
+
+
+We manage to obtain RMSE = `r final_rmse` in `r final_time` s.
 *Section that presents the modeling results and discusses the model performance.*
 
 
@@ -298,3 +344,6 @@ We manage to obtain RMSE = `r final_rmse` in `r final_time`
 \section{Conclusion}
 
 *Section that gives a brief summary of the report, its limitations and future work*
+
+\newpage
+\section{References}
