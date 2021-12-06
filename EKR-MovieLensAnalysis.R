@@ -248,8 +248,8 @@ tvs_svd <- time_result %>% filter(model == "SVD") %>% lm(formula = time ~ size)
 tvs_svd_pred <- predict.lm(tvs_svd, newdata = data.frame(1))
 rsq_svd <- summary(tvs_svd)[["r.squared"]]
 
-time_result <- time_result %>% mutate(sqrt_time = sqrt(time)) # Compute sqrt(time) for UBCF quadratic model
-tvs_ubcf <- time_result %>% filter(model == "UBCF") %>% lm(formula = sqrt_time ~ size)
+time_result_sq <- time_result %>% mutate(sqrt_time = sqrt(time)) # Compute sqrt(time) for UBCF quadratic model
+tvs_ubcf <- time_result_sq %>% filter(model == "UBCF") %>% lm(formula = sqrt_time ~ size)
 tvs_ubcf_pred <- predict.lm(tvs_ubcf, newdata = data.frame(1))^2  # Prediction is squared (quadratic model)
 rsq_ubcf <- summary(tvs_ubcf)[["r.squared"]]
 
@@ -405,11 +405,11 @@ gc(verbose = FALSE)
 
 # Convert edx set to matrix, then realRatingMatrix (class used by recommenderlab)
 gc(verbose = FALSE)
-edx_rrm <- acast(edx2, userId ~ movieId, value.var = "rating")
+edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
 edx_rrm <- as(edx_rrm, "realRatingMatrix")
 gc(verbose = FALSE)
 
-rm(edx, edx2, validation)     # edx/validation won't be used anymore ; keep only edx_rrm/validation_rrm
+rm(edx, validation)     # edx/validation won't be used anymore ; keep only edx_rrm/validation_rrm
 
 # Run the final validation benchmark
 start_time <- Sys.time()     # Start chronometer
