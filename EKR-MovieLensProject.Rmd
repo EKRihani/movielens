@@ -12,17 +12,16 @@ header-includes:
 indent: true   # Indent paragraphs
 bibliography: packages.bib #, references.bib
 references:
-  - id: test2000
-    title: Le test du test dans le test
-    author: 
-    - family: Testeur
-      given: Johnny
-    url: http://dx.doi.org/10.1038/nmat3283
-    DOI: 10.1038/nmat3283
-    publisher: Journal of Tested tests
+  - id: movielens
+    title: "The MovieLens Datasets: History and Context"
+    author: F. Maxwell Harper and Joseph A. Konstan
+    url: http://dx.doi.org/10.1145/2827872
+    DOI: 10.1145/2827872
+    publisher: ACM
     type: article-journal
     issued:
-      year: 2018
+      year: 2016
+
 csl: https://www.zotero.org/styles/vancouver-superscript
 #- \usepackage{indentfirst} # Indent first line of each paragraph
 ---
@@ -46,7 +45,7 @@ knitr::write_bib(c("tidyverse", "caret", "data.table", "reshape2", "ggplot2", "g
 \section{Overview}
 \subsection{Goal of the study}
 \paragraph*{}
-The aim of this study[@test2000] is to analyze a MovieLens dataset and try to create a model that can predict users' future preferences based on their current preferences, using data analysis and machine learning techniques.
+The aim of this study is to analyze a MovieLens dataset[@movielens] and try to create a model that can predict users' future preferences based on their current preferences, using data analysis and machine learning techniques.
 
 \subsection{The dataset}
 \paragraph*{}
@@ -97,7 +96,9 @@ edx_rrm <- as(edx_rrm, "realRatingMatrix")
 
 The same operation must be performed on the validation data set. To make sure the *validation* isn't used until the final validation, we explicitly chose not to use it *at all* until the final steps.
 \paragraph*{}
-However, some recommenderlab models may encounter problems if the training set and the validation sets don't have the same items (movies). This can be the case if a list-splitting method is used, because some items can be present in the training set, but not in the validation set.
+This method has two limits. Firstly, it uses a considerable amount of memory on large datasets and thus requires to use the *memory.limit* function on Windows systems, or to have enough total memory (RAM+swap) on Linux systems. Otherwise, R may return errors or even crash.
+\paragraph*{}
+Secondly, some recommenderlab models may encounter problems if the training set and the validation sets don't have the same items (movies). This can be the case if a list-splitting method is used, because some items can be present in the training set, but not in the validation set.
 \paragraph*{}
 Two equivalent strategies can be used : either add the missing items with *NA* ratings in the validation set or remove the useless items in the training set. Since modifications of the validation set are explicitly forbidden, the only option is to remove useless items in the training set, i.e. exclude from the *edx* set all movies that don't exist in the *validation* set, before building the realRatingMatrix.
 \paragraph*{}
@@ -115,9 +116,9 @@ However, the choice of the list vs matrix splitting strategy during the intermed
 
 \subsection{Performance metrics}
 \paragraph*{}
-Several metrics can be used to evaluate the accuracy of the prediction, such as the Mean Average Error (MAE, consistent with the data units), the Mean Square Error (MSE, penalizes large errors) and the Root Mean Square Error (RMSE, penalizes large errors **and** is consistent with the data units). The metric used in this study to evaluate the accuracy of the prediction is the root-mean-squared error (RMSE), given by : $$\sqrt{ \frac{1}{N} \sum_{m,u}\left(\hat{y}_{m,u} -  y_{m,u}\right)^{2}}$$ With N the number of ratings, $\hat{y}_{m,u}$ the rating (for the movie m, by the user u) that is predicted by the model built with the training set and $y_{m,u}$ the actual rating of the testing set. The lower the RMSE, the more accurate the model.
+Several metrics can be used to evaluate the accuracy of the prediction, such as the Mean Average Error (MAE, consistent with the data units), the Mean Square Error (MSE, penalizes large errors) and the Root Mean Square Error (RMSE, penalizes large errors **and** is consistent with the data units). The metric used in this study to evaluate the accuracy of the prediction is the root-mean-squared error (RMSE), given by : $$RMSE = \sqrt{ \frac{1}{N} \sum_{m,u}\left(\hat{y}_{m,u} -  y_{m,u}\right)^{2}}$$ With N the number of ratings, $\hat{y}_{m,u}$ the rating (for the movie m, by the user u) that is predicted by the model built with the training set and $y_{m,u}$ the actual rating of the testing set. The lower the RMSE, the more accurate the model.
 \paragraph*{}
-Recommenderlab conveniently provides a *calcPredictionAccuracy* function that computes the MAE, MSE, RMSE. As an example (using a LIBMF method) the recommendation, prediction and accuracy evaluation can be run by :
+Recommenderlab conveniently provides a *calcPredictionAccuracy* function that computes the MAE, MSE and RMSE. As an example (using a LIBMF method) the recommendation, prediction and accuracy evaluation can be run by :
 
 ```{r, eval = FALSE}
 recommendation <- Recommender(data = edx_rrm, method = "LIBMF")
@@ -125,7 +126,7 @@ prediction <- predict(recommendation, validation_rrm, type = "ratingMatrix")
 accuracy <- calcPredictionAccuracy(validation_rrm, prediction)
 ```
 
-Another very useful and easy to evaluate metric is the time needed to execute the recommendation, prediction and accuracy steps. The code used in this study is quite simple :
+Another very useful and easy to evaluate metric is the time needed to execute the recommendation, prediction and accuracy steps. The code used in our study is quite simple :
 ```{r, eval = FALSE}
 start_time <- Sys.time()
 # Insert_code_here #
@@ -262,7 +263,7 @@ Raising the *k* parameter vastly improves the accuracy of the prediction. Howeve
 plot(plot_fitting6 + theme_bw())
 ```
 \paragraph*{}
-The *maxiter* doesn't seem to have any meaningful impact on this study : all RMSE are identical, and all computing times seem randomly distributed in a `r round(max(results_fitting[which(results_fitting$model == "SVD" & results_fitting$parameter == "maxiter"),]$time) - min(results_fitting[which(results_fitting$model == "SVD" & results_fitting$parameter == "maxiter"),]$time),1)` seconds time span.
+The *maxiter* parameter doesn't seem to have any meaningful impact on this study : all RMSE are identical, and all computing times seem randomly distributed in a `r round(max(results_fitting[which(results_fitting$model == "SVD" & results_fitting$parameter == "maxiter"),]$time) - min(results_fitting[which(results_fitting$model == "SVD" & results_fitting$parameter == "maxiter"),]$time),1)` seconds time span.
 \paragraph*{}
 ```{r out.width = "90%", echo = FALSE}
 kable(table_svd_normalize, caption = "SVD model, *normalize* parameter tuning")
@@ -286,9 +287,9 @@ The LIBMF method has four parameters :
 plot(plot_fitting1 + theme_bw())
 ```
 \paragraph*{}
-The *dim* parameter has a major effect on accuracy and computing time. Higher values ($dim = 1000$) yield a better accuracy, with RMSE = `r results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "1000",]$rmse`, at the cost of a higher computing time (t = `r results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "1000",]$time`).
+The *dim* parameter has a major effect on accuracy and computing time. Higher values ($dim = 1000$) yield a better accuracy, with RMSE = `r results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "1000",]$rmse`, at the cost of a higher computing time (t = `r results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "1000",]$time` s).
 \paragraph*{}
-Very high or very low dim values seem to show diminishing returns in time or accuracy. We can thus design time/RMSE optimization strategies by computing a composite indicator (such as $time \times RMSE^{n}$, with $n$ a fixed weight factor), then finding the lowest value.
+Very high or very low *dim* values seem to show diminishing returns in time or accuracy. We can thus design time/RMSE optimization strategies by computing a composite indicator (such as $time \times RMSE ^{n}$, with $n$ a fixed weight factor), then finding its minimum.
 \paragraph*{}
 We can for example choose to put a 2:1 weight on RMSE vs time (*n* = 2), to reflect the higher priority given to RMSE -- which is the primary goal of this project -- while also taking computing time into account.
 ```{r out.width = "90%", echo = FALSE}
@@ -300,7 +301,7 @@ For *n* = 2, an optimum is reached with $dim \approx 400$.
 ```{r, echo = FALSE, fig.cap = "Fitting of LIBMF method, user (costp_l2) and item (costq_l2) factor regularization parameters"}
 plot(ggarrange(
   plot_fitting2 + ggtitle("Fitting: LIBMF method, costp_l2") + theme_bw(),
-  plot_fitting3 + ggtitle("Fitting: LIBMF method, costp_l2") + ylab("") + theme_bw()
+  plot_fitting3 + ggtitle("Fitting: LIBMF method, costq_l2") + ylab("") + theme_bw()
   )
 )
 ```

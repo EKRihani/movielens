@@ -76,7 +76,6 @@ library(ggplot2)        # For pretty graphics
 library(ggrepel)        # For repelled labels on graphics
 library(recommenderlab) # For data analysis
 library(stringr)        # For parameters text (tuning stage)
-#library(parallel)    # For multithread LIBMF ?
 
 # Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during our Matrix/realRatingMatrix conversion...
 memory.limit(size = 50000)
