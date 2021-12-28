@@ -28,12 +28,10 @@ csl: https://www.zotero.org/styles/vancouver-superscript
 
 ```{r setup, include=FALSE}
 load("EKR-MovieLens.RData")
-if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
 if(!require(ggpubr)) install.packages("ggpubr", repos = "http://cran.us.r-project.org")
 if(!require(rmarkdown)) install.packages("rmarkdown", repos = "http://cran.us.r-project.org")
 if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
 if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
-library(ggplot2)
 library(ggpubr)   # Combine plots (ggarrange)
 library(rmarkdown)
 library(knitr)
@@ -45,7 +43,11 @@ knitr::write_bib(c("tidyverse", "caret", "data.table", "reshape2", "ggplot2", "g
 \section{Overview}
 \subsection{Goal of the study}
 \paragraph*{}
-The aim of this study is to analyze a MovieLens dataset[@movielens] and try to create a model that can predict users' future preferences based on their current preferences, using data analysis and machine learning techniques.
+Recommendation systems are algorithms that try to predict users' preferences in order to improve the suggestions one company can make to users. These algorithms are widely used in movies platforms, web stores and search engines in order to improve sales, but also the user experience and the accuracy of the suggested products, movies or links.
+\paragraph*{}
+The aim of this study is to analyze a MovieLens dataset[@movielens] and try to create a model that can predict users' future preferences based on the ratings they gave on the movies they previously saw, using data analysis and machine learning techniques.
+\paragraph*{}
+The main goal is to predict users' probable future ratings with the lowest possible error. A secondary goal is to obtain these results in a reasonable amount of time, on a desktop computer.
 
 \subsection{The dataset}
 \paragraph*{}
@@ -77,7 +79,7 @@ The code, benchmarks and report were run on the following computer configuration
 * SSD : Crucial P5 M2 NVMe
 * OS : Xubuntu Linux
 * R : version 4.1.0
-* Packages : tidyverse[@R-tidyverse] (v1.3.1), caret[@R-caret] (v6.0-88), data.table[@R-data.table] (v1.14.0), reshape2[@R-reshape2] (v1.4.4), ggplot2[@R-ggplot2] (v3.3.5), ggrepel[@R-ggrepel] (v0.9.1), recommenderlab[@R-recommenderlab] (v0.2-7), stringr[@R-stringr] (v1.4.0), **[parallel????]**, ggpubr[@R-ggpubr] (v0.4.0), rmarkdown[@R-rmarkdown] (v2.11), knitr[@R-knitr] (v1.34).
+* Packages : tidyverse[@R-tidyverse] (v1.3.1), caret[@R-caret] (v6.0-88), data.table[@R-data.table] (v1.14.0), reshape2[@R-reshape2] (v1.4.4), , ggrepel[@R-ggrepel] (v0.9.1), recommenderlab[@R-recommenderlab] (v0.2-7), ggpubr[@R-ggpubr] (v0.4.0), rmarkdown[@R-rmarkdown] (v2.11), knitr[@R-knitr] (v1.34).
 
 \paragraph*{}
 The code was also tested on a Windows 7 x64 SP1 computer with 16 GB RAM. It was not tested on any Mac OS system.
@@ -101,8 +103,18 @@ This method has two limits. Firstly, it uses a considerable amount of memory on 
 Secondly, some recommenderlab models may encounter problems if the training set and the validation sets don't have the same items (movies). This can be the case if a list-splitting method is used, because some items can be present in the training set, but not in the validation set.
 \paragraph*{}
 Two equivalent strategies can be used : either add the missing items with *NA* ratings in the validation set or remove the useless items in the training set. Since modifications of the validation set are explicitly forbidden, the only option is to remove useless items in the training set, i.e. exclude from the *edx* set all movies that don't exist in the *validation* set, before building the realRatingMatrix.
+
+\subsection{Cross-validation}
 \paragraph*{}
-Preliminary benchmarks can be run by splitting the training realRatingMatrix (*edx_rrm*) into smaller subsets, or in training/prevalidation datasets by using a regular index sampling method. For example, for a 90/10 training/prevalidation ratio :
+In order to compare the algorithms and tuning parameters, the cross-validation gold standard is probably the hold-out method. This method holds out a portion of the initial dataset only for the final evaluation, and splits the other part into training and validation subsets.
+\paragraph*{}
+In our case, the *movielens* dataset was already split into an *validation* (final evaluation) and *edx* set that has to be split into a training and validation set. Several strategies can be used to perform this split, such as a basic split-train or a more elaborate K-fold cross validation. 
+\paragraph*{}
+Since our goal is to be able to compare most *recommenderlab* algorithms and tuning parameters in a reasonable amount of time, the split-train validation is a good choice, because this method is K times faster than a K-fold cross validation although it typically gives noisier and more biased results for algorithm selection and tuning than a K-fold cross-validation method.
+\paragraph*{}
+However, in order to be able to compare the performance of nine algorithms (some of them being very slow) in a reasonnable time, and perform all the hyperparameter tunings, all initial benchmarks and validations were run on a smaller subset of the *edx* dataset. In other words, we chose to "undertrain" in all model selections and hyperparameter tuning steps. This strategy gives much faster results, but all preliminary performance metrics should of course be considered as rough estimates. The main caveat of this strategy is that the larger amount of bias and noise can lead to less-than-optimal model or hyperparameter choices, and a much larger final error.
+\paragraph*{}
+The split-train method can be performed by splitting the *edx* (training/validation) dataset with a regular index sampling method and then building the corresponding realRatingMatrix, or more simply splitting the training realRatingMatrix (*edx_rrm*) into smaller matrices. For example, for a 90/10 training/prevalidation ratio :
 
 ```{r, eval = FALSE}
 test_index <- sample(x = seq(1, nrow(edx_rrm)), size = nrow(edx_rrm)*0.1, replace = FALSE)
@@ -110,9 +122,9 @@ edx_rrm_train <- edx_rrm[-test_index]
 edx_rrm_test <- edx_rrm[test_index]
 ```
 
-While splitting matrices for training/pre-validation purposes makes the code much cleaner and faster, it is *not* strictly equivalent to splitting a list and then building the corresponding matrices. On some very specific datasets, the results obtained in the pre-validation and tuning stages may vary when one uses a matrix-based splitting or a list-based splitting.
+The *recommenderlab* package conveniently provides an *evaluationScheme* function that can perform this simple split-train method or build K-fold cross validation datasets. This packages also has an *evaluation* function that can be very useful for accuracy evaluation of models and hyperparameters, especially in association with K-fold cross validation. These function can prove to be very useful, notably on smaller datasets. However, the *evaluationScheme* function proved to be way to slow for the 10M movielens dataset on a regular desktop computer.
 \paragraph*{}
-However, the choice of the list vs matrix splitting strategy during the intermediate benchmarking/tuning steps has no impact on the final RMSE, since the *edx* and *validation* datasets were already created using a list-based splitting method with a fixed seed.
+Apart from the possibility of sub-optimal model selection and tuning, all the choices made in these splitting steps for benchmarking/tuning purposes have absolutely no impact on the final RMSE, since the *edx* and *validation* datasets were already created using a list-based splitting method with a fixed seed.
 
 \subsection{Performance metrics}
 \paragraph*{}

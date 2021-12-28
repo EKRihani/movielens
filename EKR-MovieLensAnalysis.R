@@ -64,18 +64,13 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 
 # Check/install required packages/libraries
 if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
-if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
 if(!require(ggrepel)) install.packages("ggrepel", repos = "http://cran.us.r-project.org")
 if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
-if(!require(stringr)) install.packages("stringr", repos = "http://cran.us.r-project.org")
-#if(!require(parallel)) install.packages("parallel", repos = "http://cran.us.r-project.org")
 
 # Load required packages/libraries
 library(reshape2)       # For acast function
-library(ggplot2)        # For pretty graphics
 library(ggrepel)        # For repelled labels on graphics
 library(recommenderlab) # For data analysis
-library(stringr)        # For parameters text (tuning stage)
 
 # Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during our Matrix/realRatingMatrix conversion...
 memory.limit(size = 50000)
