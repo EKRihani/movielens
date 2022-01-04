@@ -60,7 +60,7 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 
 ####################
 #   SYSTEM SETUP   #
-####################
+#################### 
 
 # Check/install required packages/libraries
 if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
