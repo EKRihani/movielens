@@ -64,19 +64,17 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 
 # Check/install required packages/libraries
 if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
-if(!require(ggplot2)) install.packages("ggplot2", repos = "http://cran.us.r-project.org")
 if(!require(ggrepel)) install.packages("ggrepel", repos = "http://cran.us.r-project.org")
+if(!require(devtools)) install.packages("devtools", repos = "http://cran.us.r-project.org") #
+if(!require(arules)) install_version("arules", version = "1.6-8", repos = "http://cran.us.r-project.org")  # Install arules package for R 3.6
+#if(!require(arules)) install.packages("arules", repos = "http://cran.us.r-project.org")  # Install arules package for R >= 4.0
 if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
-if(!require(stringr)) install.packages("stringr", repos = "http://cran.us.r-project.org")
-#if(!require(parallel)) install.packages("parallel", repos = "http://cran.us.r-project.org")
 
 # Load required packages/libraries
 library(reshape2)       # For acast function
-library(ggplot2)        # For pretty graphics
 library(ggrepel)        # For repelled labels on graphics
+library(devtools)       # For legacy atools package (v. 1.6-8) if using R 3.6
 library(recommenderlab) # For data analysis
-library(stringr)        # For parameters text (tuning stage)
-#library(parallel)    # For multithread LIBMF ?
 
 # Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during our Matrix/realRatingMatrix conversion...
 memory.limit(size = 50000)
@@ -379,20 +377,6 @@ save.image(file = "EKR-MovieLens.RData")
 
 # Load edx and validation datasets
 load("edxval.RData")
-
-# Remove data that weren't used in this study  /!\ A VIRER, AUCUNE MODIF AUTORISEE /!\
-#validation <- validation %>% select(userId,movieId,rating)
-#edx <- edx %>% select(userId,movieId,rating)
-# Detect missing movies in the validation set (present in the training but not in the validation set), keeping 1 movieId for each
-#missing_movieId = NULL
-#missing_movieId <- anti_join(edx, validation, by = "movieId")
-#missing_movieId <- missing_movieId %>% group_by(movieId) %>% slice(1)
-# Fill these missing lines with empty (NA) ratings
-#missing_movieId$userId <- NA
-#missing_movieId$rating <- NA
-#missing_movieId <- as.data.frame(missing_movieId)
-# Integrate empty rows after the validation set /!\ NOOOOOPE, ENLEVER LIGNES DANS EDX /!\
-#validation <- rbind(validation, missing_movieId)
 
 # Remove movies that aren't used in the validation set (adding lines to the validation set is forbidden)
 edx <- semi_join(edx, validation, by = "movieId")
