@@ -78,11 +78,11 @@ The code, benchmarks and report were run on the following computer configuration
 * RAM : 2x16 GB DDR4-3200
 * SSD : Crucial P5 M2 NVMe
 * OS : Xubuntu Linux
-* R : version 4.1.0
+* R : version 3.6.3
 * Packages : tidyverse[@R-tidyverse] (v1.3.1), caret[@R-caret] (v6.0-88), data.table[@R-data.table] (v1.14.0), reshape2[@R-reshape2] (v1.4.4), , ggrepel[@R-ggrepel] (v0.9.1), recommenderlab[@R-recommenderlab] (v0.2-7), ggpubr[@R-ggpubr] (v0.4.0), rmarkdown[@R-rmarkdown] (v2.11), knitr[@R-knitr] (v1.34).
 
 \paragraph*{}
-The code was also tested on a Windows 7 x64 SP1 computer with 16 GB RAM. It was not tested on any Mac OS system.
+The code was also tested on a Windows 7 x64 SP1 computer with 16 GB RAM and R 4.1.0. It was not tested on any Mac OS system.
 \subsection{Preparing data for the recommenderlab package}
 \paragraph*{}
 The recommenderlab package uses several specific data formats, all based on a single sparse matrix, where the ratings (binary or numeric) are located at the intersection of the user (*userId*) row and the rated object (*movieId*) column. Because ratings are numeric, this study will use the *realRatingMatrix* format.
@@ -283,8 +283,9 @@ kable(table_svd_normalize, caption = "SVD model, *normalize* parameter tuning")
 \paragraph*{}
 The *normalize* parameter does not seem to have a sensible impact on RMSE or computing time.
 \paragraph*{}
-In conclusion, the SVD model can be used to reach RMSE $\le$ 0.865. Better accuracy (lower RMSE) can be obtained with higher ranks of SVD approximations ($k >$ 50), but this accuracy has a strong cost in computing time. The *maxiter* and *normalize* factors don't seem to have a meaningful impact on accuracy or computing time.  
+In conclusion, the SVD model can be used to reach RMSE $\le$ 0.865. Better accuracy (lower RMSE) can be obtained with higher ranks of SVD approximations ($k >$ 50), but this accuracy has a strong cost in computing time. The *maxiter* and *normalize* factors don't seem to have any meaningful impact on accuracy or computing time.  
 
+\newpage
 \subsubsection{Tuning the LIBMF model}
 \paragraph*{}
 The LIBMF method has four parameters :
@@ -308,7 +309,7 @@ We can for example choose to put a 2:1 weight on RMSE vs time (*n* = 2), to refl
 plot(plot_fitting1b + theme_bw())
 ```
 \paragraph*{}
-For *n* = 2, an optimum is reached with $dim \approx 400$.
+Using this 2:1 RMSE/time composite factor (*n* = 2), an optimum seems to be reached for a dimension value of $dim \approx 400$.
 \paragraph*{}
 ```{r, echo = FALSE, fig.cap = "Fitting of LIBMF method, user (costp_l2) and item (costq_l2) factor regularization parameters"}
 plot(ggarrange(
@@ -317,11 +318,24 @@ plot(ggarrange(
   )
 )
 ```
+The user (*costp_l2*) and item (*costq_l2*) regularization factors seem to have an important effect on the accuracy and a minor effect on computing time.
+\paragraph*{}
+The accuracy seems to considerably improve for lower values of *costp_l2* and *costq_l2*. However, for values below 0.01  (default value), the accuracy gains seem to be quite marginal.
+\paragraph*{}
+Apart from some outliers, most of the *costp_l2* and *costq_l2* values seem to have little effect on computing time, with most results distributed in a  `r round(sd(results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter %in% c("costp_l2","costq_l2"),]$time) / sqrt(nrow(results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter %in% c("costp_l2","costq_l2"),]))*2*qnorm(.975),2)`s time span (width of the 95% IC).
 
 \paragraph*{}
 ```{r out.width = "90%", echo=FALSE}
 plot(plot_fitting4 + theme_bw())
 ```
+\paragraph*{}
+The number of threads (*nthread*) seem to have some meaningful impact in computing time. The RMSE varies very slightly from one *ntrehad* setting to another, but the difference is very small ($\Delta_{RMSE} \approx$ `r round(max(results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "nthread",]$rmse) - min(results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "nthread",]$rmse),3)`) This is an interesting result that shows that the LIMBF multithreading works out of the box, without having to install additional libraries or set the parallelization manually.
+\paragraph*{}
+However, the improvement in computing time can seem disappointing, since the impact is pretty minor, especially for $nthreads \geq 4$.
+\paragraph*{}
+This can probably be explained by the small size of the sample used for our fitting purposes and the resulting short computation time : the gains obtained by multithreading thus cannot overcome the time and memory used to setup the parallelization. This phenomenon is usually known as *parallelism overhead*.
+\paragraph*{}
+A more significant performance boost with higher values of *nthread* can probably be expected on larger datasets.
 
 \paragraph*{}
 In conclusion, LIBMF seems to be, by far, the most interesting model, with both excellent accuracy and computing times, even with default parameters.
@@ -330,7 +344,7 @@ The most impactful way to improve accuracy seems to increase the number of laten
 \paragraph*{}
 The user factor (*costp_l2*) and item factor (*costq_l2*) regularization parameters seem to have some minor impact, with lower values giving slightly better accuracy, with little effect in computing time. However, since the LIMBF model uses these factors to penalize potential overfitting, it may be preferable to keep the default values.
 \paragraph*{}
-The number of threads has some impact in computing time. However, this impact looks quite minor. This can probably be explained by the small size of the sample used for our fitting purposes and the resulting short computation time : the gains obtained by multithreading thus cannot overcome the time and memory used to setup the parallelization (parallelism overhead).
+The number of threads has some impact in computing time, but this impact looks minor, and the expected gains on this small subset are unfortunately counterweighted by the parallelism overhead.
 
 \paragraph*{}
 *Section that explains the process and techniques used, including data cleaning, data exploration and visualization, insights gained, and your modeling approach*
@@ -345,11 +359,11 @@ Given the previous benchmarks, we chose the following parameters for our final e
 * Method : LIMBF
 * Number of latent features (*dim*) : 400
 * Regularization parameter, user factor (*costp_l2*) : 0.01
-* Regularization parameter, user factor (*costq_l2*) : 0.01
+* Regularization parameter, item factor (*costq_l2*) : 0.01
 * Number of threads (*nthread*) : 16
 
-
-We manage to obtain RMSE = `r final_rmse` in `r final_time` s.
+\paragraph*{}
+With these settings, we manage to obtain RMSE = `r final_rmse` in `r final_time` s.
 *Section that presents the modeling results and discusses the model performance.*
 
 
