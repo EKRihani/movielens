@@ -368,8 +368,30 @@ plot_fitting1b <- results_fitting %>%
 table_pop_normalize <- results_fitting %>% filter(model == "POPULAR") %>% select(value, rmse, time)
 table_svd_normalize <- results_fitting %>% filter(model == "SVD", parameter == "normalize") %>% select(value, rmse, time)
 
-save.image(file = "EKR-MovieLens.RData")
+# Extract/compute some interesting fine-tuning values that are used in the report
+SVD_optimal_k <-results_fitting %>%   # Find all k parameters that give an optimal mark (RMSE < 0.865), on SVD model
+  filter(model == "SVD" & parameter == "k" & rmse <= 0.865)
+SVD_maxiter_timespan <- results_fitting %>%   # Calculate the computing time span for SVD model and maxiter parameter
+  filter(model == "SVD" & parameter == "maxiter") %>%
+  summarize(span = round(max(time) - min(time),1))
+LIBMF_best_dim <- results_fitting %>%   # Find the best (lowest) RMSE for LIBMF model and dim parameter
+  filter(model == "LIBMF" & parameter == "dim") %>%
+  filter(rmse == min(rmse))
+LIBMF_best_dim_composite <- results_fitting %>%   # Find the lowest time*rmse² value for LIBMF model and dim parameter
+  filter(model == "LIBMF" & parameter == "dim") %>%
+  mutate(comp = time * rmse^2) %>%
+  filter(comp == min(comp))
+LIBMF_costp_CI <- results_fitting %>%   # Calculate the computing time 95% confidence interval (total width) for LIBMF model and costP parameter
+  filter(model == "LIBMF" & parameter == "costp_l2") %>%
+  summarize(CI = 2*sd(time)/sqrt(length(time))*qnorm(.975))
+LIBMF_costq_CI <- results_fitting %>%   # Calculate the computing time 95% confidence interval (total width) for LIBMF model and costQ parameter
+  filter(model == "LIBMF" & parameter == "costq_l2") %>%
+  summarize(CI = 2*sd(time)/sqrt(length(time))*qnorm(.975))
+LIBMF_nthread_rmse_span <- results_fitting %>%   # Calculate the total RMSE spread for LIBMF model and nthread parameter
+  filter(model == "LIBMF" & parameter == "nthread") %>%
+  summarize(max(rmse) - min(rmse))
 
+save.image(file = "EKR-MovieLens.RData")
 
 #####################################################
 #    CALCULATING RMSE AGAINST THE VALIDATION SET    #

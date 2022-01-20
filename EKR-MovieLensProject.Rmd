@@ -269,13 +269,13 @@ plot(plot_fitting5 +
   theme_bw())
 ```
 \paragraph*{}
-Raising the *k* parameter vastly improves the accuracy of the prediction. However, this has a considerable cost in computing time. Getting RMSE below the optimal value (RMSE $\le$ 0.865) requires to set $k >$ 50 (RMSE = `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$rmse` in `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$time` s for *k* = `r results_fitting[which(results_fitting$rmse <= 0.865 & results_fitting$model == "SVD" & results_fitting$parameter == "k")[1],]$value`).
+Raising the *k* parameter vastly improves the accuracy of the prediction. However, this has a considerable cost in computing time. Getting RMSE below the optimal value (RMSE $\le$ 0.865) requires to set $k >$ 50 (RMSE = `r SVD_optimal_k[1,]$rmse` in `r SVD_optimal_k[1,]$time` s for *k* = `r SVD_optimal_k[1,]$value`).
 \paragraph*{}
 ```{r out.width = "90%", echo = FALSE}
 plot(plot_fitting6 + theme_bw())
 ```
 \paragraph*{}
-The *maxiter* parameter doesn't seem to have any meaningful impact on this study : all RMSE are identical, and all computing times seem randomly distributed in a `r round(max(results_fitting[which(results_fitting$model == "SVD" & results_fitting$parameter == "maxiter"),]$time) - min(results_fitting[which(results_fitting$model == "SVD" & results_fitting$parameter == "maxiter"),]$time),1)` seconds time span.
+The *maxiter* parameter doesn't seem to have any meaningful impact on this study : all RMSE are identical, and all computing times seem randomly distributed in a `r SVD_maxiter_timespan` seconds time span.
 \paragraph*{}
 ```{r out.width = "90%", echo = FALSE}
 kable(table_svd_normalize, caption = "SVD model, *normalize* parameter tuning")
@@ -300,7 +300,7 @@ The LIBMF method has four parameters :
 plot(plot_fitting1 + theme_bw())
 ```
 \paragraph*{}
-The *dim* parameter has a major effect on accuracy and computing time. Higher values ($dim = 1000$) yield a better accuracy, with RMSE = `r results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "1000",]$rmse`, at the cost of a higher computing time (t = `r results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "dim" & results_fitting$value == "1000",]$time` s).
+The *dim* parameter has a major effect on accuracy and computing time. Higher values (*dim* = `r LIBMF_best_dim$value`) yield a better accuracy, with RMSE = `r LIBMF_best_dim$rmse`, at the cost of a higher computing time (t = `r LIBMF_best_dim$time` s).
 \paragraph*{}
 Very high or very low *dim* values seem to show diminishing returns in time or accuracy. We can thus design time/RMSE optimization strategies by computing a composite indicator (such as $time \times RMSE ^{n}$, with $n$ a fixed weight factor), then finding its minimum.
 \paragraph*{}
@@ -309,7 +309,9 @@ We can for example choose to put a 2:1 weight on RMSE vs time (*n* = 2), to refl
 plot(plot_fitting1b + theme_bw())
 ```
 \paragraph*{}
-Using this 2:1 RMSE/time composite factor (*n* = 2), an optimum seems to be reached for a dimension value of $dim \approx 400$.
+With this (arbitrary) 2:1 ratio given on our RMSE/time composite factor (*n* = 2), an optimum seems to be reached for a dimension value of $dim \approx$ `r LIBMF_best_dim_composite$value`.
+\paragraph*{}
+That *dim* value gives RMSE = `r LIBMF_best_dim_composite$rmse` in `r LIBMF_best_dim_composite$time` seconds.
 \paragraph*{}
 ```{r, echo = FALSE, fig.cap = "Fitting of LIBMF method, user (costp_l2) and item (costq_l2) factor regularization parameters"}
 plot(ggarrange(
@@ -320,18 +322,18 @@ plot(ggarrange(
 ```
 The user (*costp_l2*) and item (*costq_l2*) regularization factors seem to have an important effect on the accuracy and a minor effect on computing time.
 \paragraph*{}
-The accuracy seems to considerably improve for lower values of *costp_l2* and *costq_l2*. However, for values below 0.01  (default value), the accuracy gains seem to be quite marginal.
+The accuracy seems to considerably decrease for higher values of *costp_l2* and *costq_l2*. However, for values below 0.01  (default value), the potential accuracy gains seem to be quite marginal.
 \paragraph*{}
-Apart from some outliers, most of the *costp_l2* and *costq_l2* values seem to have little effect on computing time, with most results distributed in a  `r round(sd(results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter %in% c("costp_l2","costq_l2"),]$time) / sqrt(nrow(results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter %in% c("costp_l2","costq_l2"),]))*2*qnorm(.975),2)`s time span (width of the 95% IC).
+Apart from some outliers, most of the *costp_l2* and *costq_l2* values seem to have little effect on computing time, with 95% confidence intervals widths of `r round(LIBMF_costp_CI,2)` seconds for *costp_l2* and `r round(LIBMF_costp_CI,2)` seconds for *costq_l2*.
 
 \paragraph*{}
 ```{r out.width = "90%", echo=FALSE}
 plot(plot_fitting4 + theme_bw())
 ```
 \paragraph*{}
-The number of threads (*nthread*) seem to have some meaningful impact in computing time. The RMSE varies very slightly from one *ntrehad* setting to another, but the difference is very small ($\Delta_{RMSE} \approx$ `r round(max(results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "nthread",]$rmse) - min(results_fitting[results_fitting$model == "LIBMF" & results_fitting$parameter == "nthread",]$rmse),3)`) This is an interesting result that shows that the LIMBF multithreading works out of the box, without having to install additional libraries or set the parallelization manually.
+The number of threads (*nthread*) seem to have some meaningful impact in computing time. The RMSE varies very slightly from one *ntrehad* setting to another, but the difference is very small ($\Delta_{RMSE} \approx$ `r round(LIBMF_nthread_rmse_span,3)`) This is an interesting result that shows that the LIMBF multithreading works out of the box, without having to install additional libraries or set the parallelization manually.
 \paragraph*{}
-However, the improvement in computing time can seem disappointing, since the impact is pretty minor, especially for $nthreads \geq 4$.
+However, the improvement in computing time can seem disappointing, since the impact is pretty minor, especially for $nthread \geq 4$.
 \paragraph*{}
 This can probably be explained by the small size of the sample used for our fitting purposes and the resulting short computation time : the gains obtained by multithreading thus cannot overcome the time and memory used to setup the parallelization. This phenomenon is usually known as *parallelism overhead*.
 \paragraph*{}
@@ -340,7 +342,7 @@ A more significant performance boost with higher values of *nthread* can probabl
 \paragraph*{}
 In conclusion, LIBMF seems to be, by far, the most interesting model, with both excellent accuracy and computing times, even with default parameters.
 \paragraph*{}
-The most impactful way to improve accuracy seems to increase the number of latent features (*dim*). However, this factor has a strong impact on computing time. Our results are perfectly consistent with those obtained by the creators of the LIBMF library in their initial tests. The excellent performance of the LIBMF model allows the user to choose between good accuracy and excellent computing time, or outstanding accuracy in a reasonable time
+The most impactful way to improve accuracy of the LIMBF model seems to increase the number of latent features (*dim*). However, this factor has a strong impact on computing time. Our results are perfectly consistent with those obtained by the creators of the LIBMF library in their initial tests. The excellent performance of the LIBMF model allows the user to choose between good accuracy and excellent computing time, or outstanding accuracy in a reasonable time.
 \paragraph*{}
 The user factor (*costp_l2*) and item factor (*costq_l2*) regularization parameters seem to have some minor impact, with lower values giving slightly better accuracy, with little effect in computing time. However, since the LIMBF model uses these factors to penalize potential overfitting, it may be preferable to keep the default values.
 \paragraph*{}
@@ -364,12 +366,13 @@ Given the previous benchmarks, we chose the following parameters for our final e
 
 \paragraph*{}
 With these settings, we manage to obtain RMSE = `r final_rmse` in `r final_time` s.
+
+
 *Section that presents the modeling results and discusses the model performance.*
 
 
 \newpage
 \section{Conclusion}
-
 *Section that gives a brief summary of the report, its limitations and future work*
 
 \newpage
