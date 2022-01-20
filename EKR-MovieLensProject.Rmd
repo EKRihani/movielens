@@ -366,14 +366,21 @@ Given the previous benchmarks, we chose the following parameters for our final e
 
 \paragraph*{}
 With these settings, we manage to obtain RMSE = `r final_rmse` in `r final_time` s.
-
+\paragraph*{}
+As suggested by our previous selection and tuning processes, the LIBMF model provides excellent accuracy in a very reasonable amount of time.
 
 *Section that presents the modeling results and discusses the model performance.*
-
-
 \newpage
 \section{Conclusion}
+\paragraph*{}
+The aim of this study was to build a recommendation system based on the recommenderlab package and use it to predict user preferences on the Movielens dataset. After splitting the data into a training and validation sets, some data preparation of the training set was performed, notably by converting the sparse dataset into a suitable matrix format. Training and evaluation of nine recommendation algorithms were then performed, using cross-validation on a smaller subset of the original training set. The three best algorithms were then fine-tuned, and the best one (LIBMF) was used against the validation set.
+\paragraph*{}
+The LIBMF method proved to give outstanding performance, with excellent accuracy (RMSE = `r final_rmse`) in a reasonable amount of time (t = `r final_time` s).
+\paragraph*{}
+Although this code was run and tested on two different systems (R 4.1.0 on Windows, R 3.6.3 on Linux), it was not possible to test on any Mac OS system.
+\paragraph*{}
+Despite being oriented toward both accuracy and performance in terms of computing time of the recommendation algorithm, there is still a considerable room for improvement in the performance field of the selection and tuning processes themselves. These steps could probably benefit from some parallelization and further code optimization.
+\paragraph*{}
 *Section that gives a brief summary of the report, its limitations and future work*
-
 \newpage
 \section{References}
