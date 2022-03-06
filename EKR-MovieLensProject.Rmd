@@ -59,7 +59,7 @@ In layman's terms, the goal of this project is to fill these empty cells as accu
 \paragraph*{}
 The provided information includes the user's unique ID (`r column_names[1]`), the movie's unique ID (`r column_names[2]`), the rating given by the user (`r column_names[3]`), the timestamp of the rating (`r column_names[4]`), the title of the movie (`r column_names[5]`) and its genre (`r column_names[6]`).
 \paragraph*{}
-This dataset was split into a training set (*edx*, 90% of the ratings) that will be used for building, training and tuning the recommendation system and a validation set (*validation*, 10% of the ratings) that will exclusively be used for the final evaluation of the accuracy of our recommendation system.
+This dataset was split into a training set (*edx*, 90% of the ratings) that will be used for building, training and tuning the recommendation system and a validation set (*validation*, 10% of the ratings) that will exclusively be used for the final evaluation of the accuracy of the recommendation system.
 
 \newpage
 \section{Methods and Analysis}
@@ -82,7 +82,7 @@ The code, benchmarks and report were run on the following computer configuration
 * Packages : tidyverse[@R-tidyverse] (v1.3.1), caret[@R-caret] (v6.0-88), data.table[@R-data.table] (v1.14.0), reshape2[@R-reshape2] (v1.4.4), , ggrepel[@R-ggrepel] (v0.9.1), recommenderlab[@R-recommenderlab] (v0.2-7), ggpubr[@R-ggpubr] (v0.4.0), rmarkdown[@R-rmarkdown] (v2.11), knitr[@R-knitr] (v1.34).
 
 \paragraph*{}
-The code was also tested on a Windows 7 x64 SP1 computer with 16 GB RAM and R 4.1.0. It was not tested on any Mac OS system.
+The code was also tested on a Windows 7 x64 SP1 computer with 16 GB RAM and R 4.1.0. It was not tested on any Mac OS system. The provided code includes alternate settings for less powerful computers.
 \subsection{Preparing data for the recommenderlab package}
 \paragraph*{}
 The recommenderlab package uses several specific data formats, all based on a single sparse matrix, where the ratings (binary or numeric) are located at the intersection of the user (*userId*) row and the rated object (*movieId*) column. Because ratings are numeric, this study will use the *realRatingMatrix* format.
@@ -96,7 +96,7 @@ edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
 edx_rrm <- as(edx_rrm, "realRatingMatrix")
 ```
 
-The same operation must be performed on the validation data set. To make sure the *validation* isn't used until the final validation, we explicitly chose not to use it *at all* until the final steps.
+The same operation must be performed to validate the model. To make sure the *validation* isn't used until the final validation, it was explicitly chosen not to use it *at all* until the final steps.
 \paragraph*{}
 This method has two limits. Firstly, it uses a considerable amount of memory on large datasets and thus requires to use the *memory.limit* function on Windows systems, or to have enough total memory (RAM+swap) on Linux systems. Otherwise, R may return errors or even crash.
 \paragraph*{}
@@ -108,11 +108,11 @@ Two equivalent strategies can be used : either add the missing items with *NA* r
 \paragraph*{}
 In order to compare the algorithms and tuning parameters, the cross-validation gold standard is probably the hold-out method. This method holds out a portion of the initial dataset only for the final evaluation, and splits the other part into training and validation subsets.
 \paragraph*{}
-In our case, the *movielens* dataset was already split into an *validation* (final evaluation) and *edx* set that has to be split into a training and validation set. Several strategies can be used to perform this split, such as a basic split-train or a more elaborate K-fold cross validation. 
+In this study, the *movielens* dataset was already split into an *validation* (final evaluation) and *edx* set that has to be split into a training and validation set. Several strategies can be used to perform this split, such as a basic split-train or a more elaborate K-fold cross validation. 
 \paragraph*{}
-Since our goal is to be able to compare most *recommenderlab* algorithms and tuning parameters in a reasonable amount of time, the split-train validation is a good choice, because this method is K times faster than a K-fold cross validation although it typically gives noisier and more biased results for algorithm selection and tuning than a K-fold cross-validation method.
+Since the goal is to be able to compare most *recommenderlab* algorithms and tuning parameters in a reasonable amount of time, the split-train validation is a good choice, because this method is K times faster than a K-fold cross validation although it typically gives noisier and more biased results for algorithm selection and tuning than a K-fold cross-validation method.
 \paragraph*{}
-However, in order to be able to compare the performance of nine algorithms (some of them being very slow) in a reasonnable time, and perform all the hyperparameter tunings, all initial benchmarks and validations were run on a smaller subset of the *edx* dataset. In other words, we chose to "undertrain" in all model selections and hyperparameter tuning steps. This strategy gives much faster results, but all preliminary performance metrics should of course be considered as rough estimates. The main caveat of this strategy is that the larger amount of bias and noise can lead to less-than-optimal model or hyperparameter choices, and a much larger final error.
+However, in order to be able to compare the performance of nine algorithms (some of them being very slow) in a reasonnable time, and perform all the hyperparameter tunings, all initial benchmarks and validations were run on a smaller subset of the *edx* dataset. In other words, the strategy was to "undertrain" in all model selections and hyperparameter tuning steps. This strategy gives much faster results, but all preliminary performance metrics should of course be considered as rough estimates. The main caveat of this strategy is that the larger amount of bias and noise can lead to less-than-optimal model or hyperparameter choices, and a much larger final error.
 \paragraph*{}
 The split-train method can be performed by splitting the *edx* (training/validation) dataset with a regular index sampling method and then building the corresponding realRatingMatrix, or more simply splitting the training realRatingMatrix (*edx_rrm*) into smaller matrices. For example, for a 90/10 training/prevalidation ratio :
 
@@ -138,7 +138,7 @@ prediction <- predict(recommendation, validation_rrm, type = "ratingMatrix")
 accuracy <- calcPredictionAccuracy(validation_rrm, prediction)
 ```
 
-Another very useful and easy to evaluate metric is the time needed to execute the recommendation, prediction and accuracy steps. The code used in our study is quite simple :
+Another very useful and easy to evaluate metric is the time needed to execute the recommendation, prediction and accuracy steps. The code used in this study is quite simple :
 ```{r, eval = FALSE}
 start_time <- Sys.time()
 # Insert_code_here #
@@ -155,21 +155,21 @@ The *Popular* method is based on the most rated items, and will thus recommend t
 \paragraph*{}
 The *UBCF* and *IBCF* methods are respectively an user-based and an item-based collaborating filtering methods. These methods are the oldest recommender methods (1992) and are based on a "similar users like similar things" strategies. UBCF focuses on the users and is based on the hypothesis that users with comparable preferences will rate movies similarly, and thus tries to find for each user a k-neighborhood of the most comparable users (by using cosine similarity, by default) and aggregate their ratings to form a prediction. IBCF works similarly, but is focused on items, the core hypothesis being that users prefer movies that are similar to movies they already like. The IBCF method uses a comparable approach as the UBCF but tries to find similarities between movies by computing the k-neighborhood of movies instead of users.
 \paragraph*{}
-The *ALS*, *ALS_implicit* and *LIBMF* methods are all based on the same mathematical concept : matrix factorization. Matrix factorization is a widely used method that tries to approximate our entire rating matrix $R_{u \times m}$ as the product of smaller-sized matrices $P_{k \times u}$ and $Q_{k \times m}$ : $R \approx P'Q$. In other words, each user and each item are summarized by *k* dimensional vectors, where *k* is a small fixed number. The underlying mathematical problem is then to minimize the distance (least squares error) between each known $r_{u,m}$ rating and the corresponding intersection of the product of our two smaller-sized matrices $p_{u}^{T}.q_{m}$.
+The *ALS*, *ALS_implicit* and *LIBMF* methods are all based on the same mathematical concept : matrix factorization. Matrix factorization is a widely used method that tries to approximate the entire rating matrix $R_{u \times m}$ as the product of smaller-sized matrices $P_{k \times u}$ and $Q_{k \times m}$ : $R \approx P'Q$. In other words, each user and each item are summarized by *k* dimensional vectors, where *k* is a small fixed number. The underlying mathematical problem is then to minimize the distance (least squares error) between each known $r_{u,m}$ rating and the corresponding intersection of the product of the two smaller-sized matrices $p_{u}^{T}.q_{m}$.
 \paragraph*{}
-In ALS and ALS_implicit optimization strategies, $p_{u}$ is fixed and $q_{m}$ is optimized by minimizing the square error, then $q_{m}$ is fixed and then $p_{u}$ is optimized, hence the *Alternating Least Square* name. The ALS method is used for explicit data, which are strictly correlated to the values we are trying to predict. The ALS_implicit method is designed for implicit data that reflects the interaction between the user and the movie and is only indirectly linked to the rating. In our application, the ALS method will try to predict user ratings using user ratings, whereas the ALS_implicit method tries to predict user ratings with clicks, fast-forwards, number of times viewed... Since these kind of data isn't present in our dataset, using the ALS_implicit method makes little sense.
+In ALS and ALS_implicit optimization strategies, $p_{u}$ is fixed and $q_{m}$ is optimized by minimizing the square error, then $q_{m}$ is fixed and then $p_{u}$ is optimized, hence the *Alternating Least Square* name. The ALS method is used for explicit data, which are strictly correlated to the values one is trying to predict. The ALS_implicit method is designed for implicit data that reflects the interaction between the user and the movie and is only indirectly linked to the rating. In this study, the ALS method would try to predict user ratings using user ratings, whereas the ALS_implicit method would try to predict user ratings with clicks, fast-forwards, number of times viewed... Since these kind of data isn't present in the MovieLens dataset, using the ALS_implicit method makes little sense.
 \paragraph*{}
 *LIMBF* is an open-source library was created by Chin et al, from the Taiwan University, in 2014. This algorithm uses a gradient descent approach, which is an iterative algorithm that compute the local gradient of this distance and adjusts the $p_{u}$ and $q_{m}$ *against* the gradient in order to approach a better value. This specific library also aims to make full use of the computing power of modern processors (SSE and AMX instructions, multithreading) in Matrix Factorization.
 \paragraph*{}
-The *SVD* and *SVDF* (Funk SVD) methods are both Singular Value Decomposition methods **[ A FINIR !!!!]**
+The *SVD* and *SVDF* (Funk SVD) methods are both Singular Value Decomposition methods. Singular Value Decomposition's goal is to decompose a $m \times n$ matrix A in three smaller matrices $A_{n \times m} = U_{m \times r} \times W_{r \times r} \times V^{T}_{r \times n}$ with U the matrix of the eigenvectors of $A \times A^{T}$, W a diagonal matrix of the singular values (square root of the eigenvalues of $A^{T} \times A$) and V matrix of the eigenvectors of $A^{T} \times A$. SVD can be used to efficiently minimize least square errors in order to build prediction algorithms. Funk's SVD isan improvement on the SVD model, that was specifically designed to address sparse matrices problems commonly met in recommendation systems.
 
 \subsection{Performance of the different models}
 \paragraph*{}
-Some models may be faster and/or more accurate than others and thus be more interesting for our study. In order to evaluate the model performance, we will use smaller subsets that will allow quicker computation and comparison of the respective performance of all the recommenderlab methods.
+Some models may be faster and/or more accurate than others and thus be more interesting for this study. In order to evaluate the model performance, smaller subsets will be used, which will allow quicker computation and comparison of the respective performance of all the recommenderlab methods.
 \paragraph*{}
-The *edx* dataset was split into smaller subsets that will allow a quicker evaluation of our different models. These smaller subsets are then split into a training (90%) and validation (10%) sets.
+The *edx* dataset was split into smaller subsets that will allow a quicker evaluation of the different models. These smaller subsets are then split into a training (90%) and validation (10%) sets.
 \paragraph*{}
-Training and validation are then performed for each dataset. The computing time of the training, prediction and validation steps is measured. The accuracy of the prediction (RMSE) is also evaluated. We can then create a scatterplot of the RMSE vs compute time of our different models, and plot lines for our RMSE criterias (RMSE > 0.900 and RMSE < 0.865).
+Training and validation are then performed for each dataset. The computing time of the training, prediction and validation steps is measured. The accuracy of the prediction (RMSE) is also evaluated. It is then possible to create a scatterplot of the RMSE vs compute time of these different models, and plot lines for relevant RMSE levels (RMSE > 0.900 and RMSE < 0.865).
 \paragraph*{}
 ```{r echo = FALSE, fig.cap = "Benchmark of the recommenderlab methods with a 0.5% subset size"}
 plot(plot_time_rmse1 + theme_bw())
@@ -182,15 +182,15 @@ kable(benchmark_result1 %>% select("RMSE", "time"),
 
 As one can expect, the random model is among the fastest, but performs quite poorly in terms of accuracy.
 \paragraph*{}
-The Popular, SVD, UBCF and LIBMF are clear winners, being all in the "fast and accurate" quadrant of our RMSE vs time plot. The accuracy of the SVDF method is comparable with the accuracy of SVD, but SVDF seems to be much slower.
+The Popular, SVD, UBCF and LIBMF are clear winners, being all in the "fast and accurate" quadrant of the RMSE vs time plot. The accuracy of the SVDF method is comparable with the accuracy of SVD, but SVDF seems to be much slower.
 \paragraph*{}
-The ALS method seems to be quite slow, but accurate. As expected, we can see a large difference between explicit and implicit ALS methods. Our data are explicit : we use (known) user ratings to predict (unknown) user ratings. Force-feeding these explicit data in an method that was designed around implicit data gives results that are both very slow and inaccurate ($RMSE_{ALSimplicit} > RMSE_{random}$). 
+The ALS method seems to be quite slow, but accurate. As expected, a large difference can be seen between explicit and implicit ALS methods. The data are explicit : (known) user ratings are used to predict (unknown) user ratings. Force-feeding these explicit data in an method that was designed around implicit data gives results that are both very slow and inaccurate ($RMSE_{ALSimplicit} > RMSE_{random}$). 
 \paragraph*{}
-As said before, the UBCF method performed quite well. However, the IBCF was so slow it wasn't included in the plot. This can look quite suprising at first. However, the UBCF is based on users, while the IBCF is based on items (movies). In other words, UBCF is row-based, while IBCF is column-based : since we defined our smaller datasets as a smaller matrix row-wise, the UBCF worked on 0.5% of the rows, while the IBCF method had to work on 100% of the columns, hence the poor performance, both on time and accuracy criterias.
+As said before, the UBCF method performed quite well. However, the IBCF was so slow it wasn't included in the plot. This can look quite surprising at first. However, the UBCF is based on users, while the IBCF is based on items (movies). In other words, UBCF is row-based, while IBCF is column-based : since the smaller datasets are defined as a smaller matrix row-wise, the UBCF worked on 0.5% of the rows, while the IBCF method had to work on 100% of the columns, hence the poor performance, both on time and accuracy criteria.
 \paragraph*{}
 The ALS_implicit and IBCF results can look quite surprising at first, but were predictable in the end. This underline the importance of understanding how these methods work, and not just treat them as "black boxes" or "magic bullets".
 \paragraph*{}
-We can use these preliminary results to exclude the slowest and most inaccurate models (SVDF, ALS, ALS_implicit, random) for our next benchmarks with larger datasets.
+These preliminary results can be used to exclude the slowest and most inaccurate models (SVDF, ALS, ALS_implicit, random) for the next benchmarks with larger datasets.
 \paragraph*{}
 ```{r, echo = FALSE, fig.cap = "Benchmark of the recommenderlab models with 2% and 10% subset sizes"}
 plot(
@@ -203,7 +203,7 @@ plot(
 
 These larger datasets seem to confirm the respective places of the SVD, UBCF, LIBMF and Popular methods : SVD and Popular are fast but not very accurate, UBCF is quite accurate but slow. LIBMF seems to be the most interesting model, being both very accurate and fast.
 \paragraph*{}
-However, one should keep in mind that these results -- both in time and accuracy -- are for very small datasets. We should thus carry on and try to predict the performance of these models on larger datasets.
+However, one should keep in mind that these results -- both in time and accuracy -- are for very small datasets. It is therefor necessary to carry on and try to predict the performance of these models on larger datasets.
 \paragraph*{}
 ```{r, echo = FALSE, fig.cap = "Computing time of the 4 best models (linear and quadratic time scales)"}
 plot(
@@ -217,7 +217,7 @@ plot(
 \paragraph*{}
 The computing time vs dataset size scatterplot seems to show a lower computing time for SVD, Popular and LIBMF models, while the UBCF model appears to be considerably slower. Furthermore, the computing time of this model seems to exhibit a quadratic behavior (right plot), whereas the other methods seem to be linear.
 \paragraph*{}
-We can try to predict the computing time for a full-sized dataset :
+It is possible to roughly predict the computing time for a full-sized dataset :
 ```{r echo = FALSE}
 kable(tsv_models,
   align = "cccccc",
@@ -228,19 +228,19 @@ kable(tsv_models,
 \paragraph*{}
 The UBCF model, while quite accurate, will probably be too slow for this study.
 \paragraph*{}
-We will thus select the LIBMF, POPULAR and SVD models. Since all the previous results were obtained with default settings, the next step will be to tune them in order to improve their performance.
+The LIBMF, POPULAR and SVD models will thus be selected. Since all the previous results were obtained with default settings, the next step will be to tune them in order to improve their performance.
 
 \subsection{Tuning the models}
 
 \subsubsection{Selecting the best dataset size}
 \paragraph*{}
-In order to tune our models, we first have to chose a relevant-sized training set.
+In order to tune the models, it is first necessary to chose a relevant-sized training set.
 \paragraph*{}
 ```{r out.width = "90%", echo = FALSE}
 plot(plot_rmse_size + theme_bw())
 ```
 \paragraph*{}
-According to the RMSE vs size scatterplot, our 3 selected models seem to show stability for $size \ge 0.20$.\
+According to the RMSE vs size scatterplot, the 3 selected models seem to show stability for $size \ge 0.20$.\
 Two models already have adequate performance out of the box, with $RMSE_{pop} =$ `r benchmark_result9["POPULAR",]$RMSE` in $t_{pop} =$ `r benchmark_result9["POPULAR",]$time` s for the Popular model and $RMSE_{lib} =$ `r benchmark_result9["LIBMF",]$RMSE` in $t_{lib} =$ `r benchmark_result9["LIBMF",]$time` s for LIBMF. Before tuning, SVD seems to lag behind, both in RMSE (`r benchmark_result9["SVD",]$RMSE`) and time (`r benchmark_result9["SVD",]$time` s) performance.
 
 \subsubsection{Tuning the POPULAR model}
@@ -250,9 +250,9 @@ The POPULAR method only has one parameter : *normalize*, which defines the norma
 kable(table_pop_normalize, caption = "Popular model, *normalize* parameter tuning")
 ```
 \paragraph*{}
-Quite surprisingly, our results show that the Z-score normalization, albeit more refined, produces slightly less accurate predictions than the center normalization, but is sensibly faster.  
+Quite surprisingly, the results show that the Z-score normalization, albeit more refined, produces slightly less accurate predictions than the center normalization, but is sensibly faster.  
 \paragraph*{}
-In conclusion, the Popular method, while quite simple to understand and to use, is not accurate enough (RMSE = `r min(table_pop_normalize$rmse)` ) for our study.
+In conclusion, the Popular method, while quite simple to understand and to use, is not accurate enough (RMSE = `r min(table_pop_normalize$rmse)` ) for this study.
 
 \subsubsection{Tuning the SVD model}
 \paragraph*{}
@@ -302,14 +302,14 @@ plot(plot_fitting1 + theme_bw())
 \paragraph*{}
 The *dim* parameter has a major effect on accuracy and computing time. Higher values (*dim* = `r LIBMF_best_dim$value`) yield a better accuracy, with RMSE = `r LIBMF_best_dim$rmse`, at the cost of a higher computing time (t = `r LIBMF_best_dim$time` s).
 \paragraph*{}
-Very high or very low *dim* values seem to show diminishing returns in time or accuracy. We can thus design time/RMSE optimization strategies by computing a composite indicator (such as $time \times RMSE ^{n}$, with $n$ a fixed weight factor), then finding its minimum.
+Very high or very low *dim* values seem to show diminishing returns in time or accuracy. It is thus possible to design time/RMSE optimization strategies by computing a composite indicator (such as $time \times RMSE ^{n}$, with $n$ a fixed weight factor), then finding its minimum.
 \paragraph*{}
-We can for example choose to put a 2:1 weight on RMSE vs time (*n* = 2), to reflect the higher priority given to RMSE -- which is the primary goal of this project -- while also taking computing time into account.
+One can for example choose to put a 2:1 weight on RMSE vs time (*n* = 2), to reflect the higher priority given to RMSE -- which is the primary goal of this project -- while also taking computing time into account.
 ```{r out.width = "90%", echo = FALSE}
 plot(plot_fitting1b + theme_bw())
 ```
 \paragraph*{}
-With this (arbitrary) 2:1 ratio given on our RMSE/time composite factor (*n* = 2), an optimum seems to be reached for a dimension value of $dim \approx$ `r LIBMF_best_dim_composite$value`.
+With this (arbitrary) 2:1 ratio given on the RMSE/time composite factor (*n* = 2), an optimum seems to be reached for a dimension value of $dim \approx$ `r LIBMF_best_dim_composite$value`.
 \paragraph*{}
 That *dim* value gives RMSE = `r LIBMF_best_dim_composite$rmse` in `r LIBMF_best_dim_composite$time` seconds.
 \paragraph*{}
@@ -335,28 +335,26 @@ The number of threads (*nthread*) seem to have some meaningful impact in computi
 \paragraph*{}
 However, the improvement in computing time can seem disappointing, since the impact is pretty minor, especially for $nthread \geq 4$.
 \paragraph*{}
-This can probably be explained by the small size of the sample used for our fitting purposes and the resulting short computation time : the gains obtained by multithreading thus cannot overcome the time and memory used to setup the parallelization. This phenomenon is usually known as *parallelism overhead*.
+This can probably be explained by the small size of the sample used for fitting purposes and the resulting short computation time : the gains obtained by multithreading thus cannot overcome the time and memory used to setup the parallelization. This phenomenon is usually known as *parallelism overhead*.
 \paragraph*{}
 A more significant performance boost with higher values of *nthread* can probably be expected on larger datasets.
 
 \paragraph*{}
 In conclusion, LIBMF seems to be, by far, the most interesting model, with both excellent accuracy and computing times, even with default parameters.
 \paragraph*{}
-The most impactful way to improve accuracy of the LIMBF model seems to increase the number of latent features (*dim*). However, this factor has a strong impact on computing time. Our results are perfectly consistent with those obtained by the creators of the LIBMF library in their initial tests. The excellent performance of the LIBMF model allows the user to choose between good accuracy and excellent computing time, or outstanding accuracy in a reasonable time.
+The most impactful way to improve accuracy of the LIMBF model seems to increase the number of latent features (*dim*). However, this factor has a strong impact on computing time. The results are perfectly consistent with those obtained by the creators of the LIBMF library in their initial tests. The excellent performance of the LIBMF model allows the user to choose between good accuracy and excellent computing time, or outstanding accuracy in a reasonable time.
 \paragraph*{}
 The user factor (*costp_l2*) and item factor (*costq_l2*) regularization parameters seem to have some minor impact, with lower values giving slightly better accuracy, with little effect in computing time. However, since the LIMBF model uses these factors to penalize potential overfitting, it may be preferable to keep the default values.
 \paragraph*{}
 The number of threads has some impact in computing time, but this impact looks minor, and the expected gains on this small subset are unfortunately counterweighted by the parallelism overhead.
 
-\paragraph*{}
-*Section that explains the process and techniques used, including data cleaning, data exploration and visualization, insights gained, and your modeling approach*
+<!---Section that explains the process and techniques used, including data cleaning, data exploration and visualization, insights gained, and your modeling approach--->
 
-\newpage
 \section{Results}
 
 \subsection{Evaluation against the \emph{validation} dataset}
 \paragraph*{}
-Given the previous benchmarks, we chose the following parameters for our final evaluation, against the *validation* dataset :
+Given the previous benchmarks, the following parameters were chosen for the final evaluation, against the *validation* dataset :
 
 * Method : LIMBF
 * Number of latent features (*dim*) : 400
@@ -365,22 +363,23 @@ Given the previous benchmarks, we chose the following parameters for our final e
 * Number of threads (*nthread*) : 16
 
 \paragraph*{}
-With these settings, we manage to obtain RMSE = `r final_rmse` in `r final_time` s.
+With these settings, this model managed to obtain RMSE = `r final_rmse` in `r final_time` s.
 \paragraph*{}
-As suggested by our previous selection and tuning processes, the LIBMF model provides excellent accuracy in a very reasonable amount of time.
+As suggested by the previous selection and tuning processes, the LIBMF model provides excellent accuracy in a very reasonable amount of time.
 
-*Section that presents the modeling results and discusses the model performance.*
-\newpage
+<!---Section that presents the modeling results and discusses the model performance.--->
+
 \section{Conclusion}
 \paragraph*{}
 The aim of this study was to build a recommendation system based on the recommenderlab package and use it to predict user preferences on the Movielens dataset. After splitting the data into a training and validation sets, some data preparation of the training set was performed, notably by converting the sparse dataset into a suitable matrix format. Training and evaluation of nine recommendation algorithms were then performed, using cross-validation on a smaller subset of the original training set. The three best algorithms were then fine-tuned, and the best one (LIBMF) was used against the validation set.
 \paragraph*{}
 The LIBMF method proved to give outstanding performance, with excellent accuracy (RMSE = `r final_rmse`) in a reasonable amount of time (t = `r final_time` s).
 \paragraph*{}
-Although this code was run and tested on two different systems (R 4.1.0 on Windows, R 3.6.3 on Linux), it was not possible to test on any Mac OS system.
+One of the limitations of this study is the inanibility to test the code on any MacOS system, although it was run and tested on two different systems (R 4.1.0 on Windows, R 3.6.3 on Linux).
 \paragraph*{}
-Despite being oriented toward both accuracy and performance in terms of computing time of the recommendation algorithm, there is still a considerable room for improvement in the performance field of the selection and tuning processes themselves. These steps could probably benefit from some parallelization and further code optimization.
-\paragraph*{}
-*Section that gives a brief summary of the report, its limitations and future work*
+Furthermore, despite being oriented toward both accuracy and performance in terms of computing time of the recommendation algorithm, there is still a considerable room for improvement in the performance field of the selection and tuning processes themselves. Future work will be dedicated to parallelization and further code optimization.
+
+<!---Section that gives a brief summary of the report, its limitations and future work.--->
+
 \newpage
 \section{References}

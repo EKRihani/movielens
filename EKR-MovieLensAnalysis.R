@@ -395,14 +395,21 @@ save.image(file = "EKR-MovieLens.RData")
 # Load edx and validation datasets
 load("edxval.RData")
 
-# Remove movies that aren't used in the validation set (adding lines to the validation set is forbidden)
-edx <- semi_join(edx, validation, by = "movieId")
+#############################################################################
+#   STRICT INTERPRETATION OF THE "DON'T TOUCH THE VALIDATION SET" RULE      #
+#############################################################################
 
-# Convert validation set to matrix, then realRatingMatrix (class used by recommenderlab)
-gc(verbose = FALSE)
-validation_rrm <- acast(validation, userId ~ movieId, value.var = "rating")
-validation_rrm <- as(validation_rrm, "realRatingMatrix")
-gc(verbose = FALSE)
+
+
+
+#############################################################################
+#   LOOSER INTERPRETATION OF THE "DON'T TOUCH THE VALIDATION SET" RULE      #
+#############################################################################  Faster, simpler
+
+
+# Remove useless movies in the trainingset 
+# (training/validation must have the same movies, and adding lines to the validation set is forbidden in the rules)
+edx <- semi_join(edx, validation, by = "movieId")
 
 # Convert edx set to matrix, then realRatingMatrix (class used by recommenderlab)
 gc(verbose = FALSE)
@@ -410,7 +417,13 @@ edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
 edx_rrm <- as(edx_rrm, "realRatingMatrix")
 gc(verbose = FALSE)
 
-rm(edx, validation)   # edx/validation won't be used anymore ; keep only edx_rrm/validation_rrm
+# Create validation realRatingMatrix
+gc(verbose = FALSE)
+validation_rrm <- acast(validation, userId ~ movieId, value.var = "rating")
+validation_rrm <- as(validation_rrm, "realRatingMatrix")
+gc(verbose = FALSE)
+
+rm(edx, validation)   # edx/validation original objects won't be used anymore ; keep only edx_rrm/validation_rrm
 
 # Run the final validation benchmark
 start_time <- Sys.time()     # Start chronometer
