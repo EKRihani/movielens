@@ -410,7 +410,7 @@ edx_rrm <- acast(edx, userId ~ movieId, value.var = "rating")
 edx_rrm <- as(edx_rrm, "realRatingMatrix")
 gc(verbose = FALSE)
 
-rm(edx, validation)     # edx/validation won't be used anymore ; keep only edx_rrm/validation_rrm
+rm(edx, validation)   # edx/validation won't be used anymore ; keep only edx_rrm/validation_rrm
 
 # Run the final validation benchmark
 start_time <- Sys.time()     # Start chronometer
