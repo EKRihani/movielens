@@ -102,11 +102,6 @@ edx_rrm <- as(edx_rrm, "realRatingMatrix")     # Convert matrix to realRatingMat
 rm(edx)     # Free memory
 gc(verbose = FALSE)     # Free memory
 
-##### A SUPPRIMER####
-save(edx_rrm, file = "edxRRM.RData")
-load(file = "edxRRM.RData")
-#########################
-
 ###########################################
 #    BENCHMARKING THE TRAINING METHODS    #
 ###########################################
