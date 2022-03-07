@@ -17,9 +17,8 @@ library(data.table)
 # http://files.grouplens.org/datasets/movielens/ml-10m.zip
 
 dl <- tempfile()
-#download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl) # FICHIER A DISTANCE
+download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl)
 
-dl <- "~/projects/movielens/ml-10m.zip"    # Use Local File (faster)
 ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
                  col.names = c("userId", "movieId", "rating", "timestamp"))
 movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
@@ -65,7 +64,7 @@ rm(dl, ratings, movies, test_index, temp, movielens, removed)
 # Check/install required packages/libraries
 if(!require(reshape2)) install.packages("reshape2", repos = "http://cran.us.r-project.org")
 if(!require(ggrepel)) install.packages("ggrepel", repos = "http://cran.us.r-project.org")
-if(!require(devtools)) install.packages("devtools", repos = "http://cran.us.r-project.org") #
+if(!require(devtools)) install.packages("devtools", repos = "http://cran.us.r-project.org")
 if(!require(arules)) install_version("arules", version = "1.6-8", repos = "http://cran.us.r-project.org")  # Install arules package for R 3.6
 #if(!require(arules)) install.packages("arules", repos = "http://cran.us.r-project.org")  # Install arules package for R >= 4.0
 if(!require(recommenderlab)) install.packages("recommenderlab", repos = "http://cran.us.r-project.org")
@@ -76,7 +75,7 @@ library(ggrepel)        # For repelled labels on graphics
 library(devtools)       # For legacy atools package (v. 1.6-8) if using R 3.6
 library(recommenderlab) # For data analysis
 
-# Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during our Matrix/realRatingMatrix conversion...
+# Raise R memory limit size (Windows-only), or won't be able to allocate vector of size 5+Gb during the Matrix/realRatingMatrix conversion...
 memory.limit(size = 50000)
 
 ######################
@@ -91,9 +90,9 @@ total_number_users <- n_distinct(total_dataset$userId)
 column_names <- colnames(total_dataset)
 rm(total_dataset)    # Free some memory
 
-# Save the validation dataset to an external file (will be used later for our validation set final preparation)
+# Save the validation dataset to an external file (will be used later for the validation set final preparation)
 save(edx, validation, file = "edxval.RData")
-rm(validation)     # Won't be needed until the final RMSE computation
+rm(validation)        # Won't be needed until the final RMSE computation
 gc(verbose = FALSE)   # Free as much memory as possible
 
 # Prepare training dataset for recommenderlab
@@ -197,7 +196,7 @@ plot_time_rmse3 <- plotting_time_rmse(benchmark_result5) +
   geom_text_repel() +
   ggtitle("Benchmark (10 % subset)")
 
-# Build the size vs time/rmse base for our best models
+# Build the size vs time/rmse base for the best models
 time_result <- rbind(benchmark_result1, benchmark_result2, benchmark_result3, benchmark_result4, benchmark_result5) %>%
   filter(model %in% c("SVD", "POPULAR", "LIBMF", "UBCF")) %>%
   arrange(.,model)

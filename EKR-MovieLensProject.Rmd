@@ -4,7 +4,7 @@ author: "E.K. RIHANI"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: 
   pdf_document:
-    number_sections: true   # Add section numbering
+    number_sections: true
     toc: true
     toc_depth: 3
 
@@ -23,11 +23,11 @@ references:
       year: 2016
 
 csl: https://www.zotero.org/styles/vancouver-superscript
-#- \usepackage{indentfirst} # Indent first line of each paragraph
 ---
 
 ```{r setup, include=FALSE}
 load("EKR-MovieLens.RData")
+if(!require(abind)) install.packages("abind", repos = "http://cran.us.r-project.org")
 if(!require(ggpubr)) install.packages("ggpubr", repos = "http://cran.us.r-project.org")
 if(!require(rmarkdown)) install.packages("rmarkdown", repos = "http://cran.us.r-project.org")
 if(!require(knitr)) install.packages("knitr", repos = "http://cran.us.r-project.org")
@@ -43,7 +43,7 @@ knitr::write_bib(c("tidyverse", "caret", "data.table", "reshape2", "ggplot2", "g
 \section{Overview}
 \subsection{Goal of the study}
 \paragraph*{}
-Recommendation systems are algorithms that try to predict users' preferences in order to improve the suggestions one company can make to users. These algorithms are widely used in movies platforms, web stores and search engines in order to improve sales, but also the user experience and the accuracy of the suggested products, movies or links.
+Recommendation systems are algorithms that try to predict users' preferences in order to improve the suggestions one company can make to its customers. These algorithms are widely used in movies platforms, web stores and search engines in order to improve sales, but also the user experience and the accuracy of the suggested products, movies or links.
 \paragraph*{}
 The aim of this study is to analyze a MovieLens dataset[@movielens] and try to create a model that can predict users' future preferences based on the ratings they gave on the movies they previously saw, using data analysis and machine learning techniques.
 \paragraph*{}
@@ -66,7 +66,7 @@ This dataset was split into a training set (*edx*, 90% of the ratings) that will
 \paragraph*{}
 This project will be articulated around the use of the *recommenderlab* package, which is a very powerful library for building recommendation systems that was recommended by Pr. Rafael Irizarry in his data science course.
 \paragraph*{}
-The configuration will be described, since it can have an impact on results and performance.Then recommenderlab library and its different recommendation systems will be briefly introduced. Their respective performances will be evaluated, both in computing time and accuracy, in order to select the most promising models. Their tuning parameters will then be tuned, and the best model will finally be used against the validation set.
+The configuration will be described, since it can have an impact on results and performance. Then recommenderlab library and its different recommendation systems will be briefly introduced. Their respective performances will be evaluated, both in computing time and accuracy, in order to select the most promising models. Their tuning parameters will then be tuned, and the best model will finally be used against the validation set.
 \paragraph*{}
 Code extracts will be included to illustrate how to setup and use the *recommenderlab* package.
 
@@ -77,7 +77,7 @@ The code, benchmarks and report were run on the following computer configuration
 * CPU : AMD Ryzen 5 5600G
 * RAM : 2x16 GB DDR4-3200
 * SSD : Crucial P5 M2 NVMe
-* OS : Xubuntu Linux
+* OS : Xubuntu Linux 20.04 LTS
 * R : version 3.6.3
 * Packages : tidyverse[@R-tidyverse] (v1.3.1), caret[@R-caret] (v6.0-88), data.table[@R-data.table] (v1.14.0), reshape2[@R-reshape2] (v1.4.4), , ggrepel[@R-ggrepel] (v0.9.1), recommenderlab[@R-recommenderlab] (v0.2-7), ggpubr[@R-ggpubr] (v0.4.0), rmarkdown[@R-rmarkdown] (v2.11), knitr[@R-knitr] (v1.34).
 
@@ -102,7 +102,7 @@ This method has two limits. Firstly, it uses a considerable amount of memory on 
 \paragraph*{}
 Secondly, some recommenderlab models may encounter problems if the training set and the validation sets don't have the same items (movies). This can be the case if a list-splitting method is used, because some items can be present in the training set, but not in the validation set.
 \paragraph*{}
-Two equivalent strategies can be used : either add the missing items with *NA* ratings in the validation set or remove the useless items in the training set. Since modifications of the validation set are explicitly forbidden, the only option is to remove useless items in the training set, i.e. exclude from the *edx* set all movies that don't exist in the *validation* set, before building the realRatingMatrix.
+Two equivalent strategies can be used : either add the missing items with *NA* ratings in the validation set or remove the useless items in the training set. Since modifications of the validation set are explicitly forbidden, the only option is to remove useless items in the training set, i.e. exclude from the *edx* set all movies that don't exist in the *validation* set, before building the realRatingMatrix for the final validation.
 
 \subsection{Cross-validation}
 \paragraph*{}
@@ -122,7 +122,7 @@ edx_rrm_train <- edx_rrm[-test_index]
 edx_rrm_test <- edx_rrm[test_index]
 ```
 
-The *recommenderlab* package conveniently provides an *evaluationScheme* function that can perform this simple split-train method or build K-fold cross validation datasets. This packages also has an *evaluation* function that can be very useful for accuracy evaluation of models and hyperparameters, especially in association with K-fold cross validation. These function can prove to be very useful, notably on smaller datasets. However, the *evaluationScheme* function proved to be way to slow for the 10M movielens dataset on a regular desktop computer.
+The *recommenderlab* package conveniently provides an *evaluationScheme* function that can perform this simple split-train method or build K-fold cross validation datasets. This packages also has an *evaluation* function that can be very useful for accuracy evaluation of models and hyperparameters, especially in association with K-fold cross validation. These function can prove to be very useful, notably on smaller datasets. However, the *evaluationScheme* function proved to be way too slow for the 10M movielens dataset on a regular desktop computer.
 \paragraph*{}
 Apart from the possibility of sub-optimal model selection and tuning, all the choices made in these splitting steps for benchmarking/tuning purposes have absolutely no impact on the final RMSE, since the *edx* and *validation* datasets were already created using a list-based splitting method with a fixed seed.
 
@@ -153,15 +153,15 @@ The *Random* method, as its name suggests, assigns random ratings to all movies 
 \paragraph*{}
 The *Popular* method is based on the most rated items, and will thus recommend the most viewed movies. The rating is evaluated using a distance method.
 \paragraph*{}
-The *UBCF* and *IBCF* methods are respectively an user-based and an item-based collaborating filtering methods. These methods are the oldest recommender methods (1992) and are based on a "similar users like similar things" strategies. UBCF focuses on the users and is based on the hypothesis that users with comparable preferences will rate movies similarly, and thus tries to find for each user a k-neighborhood of the most comparable users (by using cosine similarity, by default) and aggregate their ratings to form a prediction. IBCF works similarly, but is focused on items, the core hypothesis being that users prefer movies that are similar to movies they already like. The IBCF method uses a comparable approach as the UBCF but tries to find similarities between movies by computing the k-neighborhood of movies instead of users.
+The *UBCF* and *IBCF* methods are respectively an user-based and an item-based collaborative filtering methods. These methods are the oldest recommender methods (1992) and are based on a "similar users like similar things" strategies. UBCF focuses on the users and is based on the hypothesis that users with comparable preferences will rate movies similarly, and thus tries to find for each user a k-neighborhood of the most comparable users (by using cosine similarity, by default) and aggregate their ratings to form a prediction. IBCF works similarly, but is focused on items, the core hypothesis being that users prefer movies that are similar to movies they already like. The IBCF method uses a comparable approach as the UBCF but tries to find similarities between movies by computing the k-neighborhood of movies instead of users.
 \paragraph*{}
 The *ALS*, *ALS_implicit* and *LIBMF* methods are all based on the same mathematical concept : matrix factorization. Matrix factorization is a widely used method that tries to approximate the entire rating matrix $R_{u \times m}$ as the product of smaller-sized matrices $P_{k \times u}$ and $Q_{k \times m}$ : $R \approx P'Q$. In other words, each user and each item are summarized by *k* dimensional vectors, where *k* is a small fixed number. The underlying mathematical problem is then to minimize the distance (least squares error) between each known $r_{u,m}$ rating and the corresponding intersection of the product of the two smaller-sized matrices $p_{u}^{T}.q_{m}$.
 \paragraph*{}
-In ALS and ALS_implicit optimization strategies, $p_{u}$ is fixed and $q_{m}$ is optimized by minimizing the square error, then $q_{m}$ is fixed and then $p_{u}$ is optimized, hence the *Alternating Least Square* name. The ALS method is used for explicit data, which are strictly correlated to the values one is trying to predict. The ALS_implicit method is designed for implicit data that reflects the interaction between the user and the movie and is only indirectly linked to the rating. In this study, the ALS method would try to predict user ratings using user ratings, whereas the ALS_implicit method would try to predict user ratings with clicks, fast-forwards, number of times viewed... Since these kind of data isn't present in the MovieLens dataset, using the ALS_implicit method makes little sense.
+In ALS and ALS_implicit optimization strategies, $p_{u}$ is fixed and $q_{m}$ is optimized by minimizing the square error, then $q_{m}$ is fixed and then $p_{u}$ is optimized, hence the *Alternating Least Square* name. The ALS method is used for explicit data, which are strictly correlated to the values one is trying to predict. The ALS_implicit method is designed for implicit data that reflect the interactions between the user and the movie and is only indirectly linked to the rating. In this study, the ALS method would try to predict user ratings using user ratings, whereas the ALS_implicit method would try to predict user ratings with clicks, fast-forwards, number of times viewed... Since these kind of data isn't present in the MovieLens dataset, using the ALS_implicit method makes little sense.
 \paragraph*{}
 *LIMBF* is an open-source library was created by Chin et al, from the Taiwan University, in 2014. This algorithm uses a gradient descent approach, which is an iterative algorithm that compute the local gradient of this distance and adjusts the $p_{u}$ and $q_{m}$ *against* the gradient in order to approach a better value. This specific library also aims to make full use of the computing power of modern processors (SSE and AMX instructions, multithreading) in Matrix Factorization.
 \paragraph*{}
-The *SVD* and *SVDF* (Funk SVD) methods are both Singular Value Decomposition methods. Singular Value Decomposition's goal is to decompose a $m \times n$ matrix A in three smaller matrices $A_{n \times m} = U_{m \times r} \times W_{r \times r} \times V^{T}_{r \times n}$ with U the matrix of the eigenvectors of $A \times A^{T}$, W a diagonal matrix of the singular values (square root of the eigenvalues of $A^{T} \times A$) and V matrix of the eigenvectors of $A^{T} \times A$. SVD can be used to efficiently minimize least square errors in order to build prediction algorithms. Funk's SVD isan improvement on the SVD model, that was specifically designed to address sparse matrices problems commonly met in recommendation systems.
+The *SVD* and *SVDF* (Funk's SVD) methods are both Singular Value Decomposition methods. Singular Value Decomposition's goal is to decompose a $m \times n$ matrix A in three smaller matrices $A_{n \times m} = U_{m \times r} \times W_{r \times r} \times V^{T}_{r \times n}$ with U the matrix of the eigenvectors of $A \times A^{T}$, W a diagonal matrix of the singular values (square root of the eigenvalues of $A^{T} \times A$) and V matrix of the eigenvectors of $A^{T} \times A$. SVD can be used to efficiently minimize least square errors in order to build prediction algorithms. Funk's SVD is an improvement on the SVD model, that was specifically designed to address sparse matrices problems commonly met in recommendation systems.
 
 \subsection{Performance of the different models}
 \paragraph*{}
@@ -203,7 +203,7 @@ plot(
 
 These larger datasets seem to confirm the respective places of the SVD, UBCF, LIBMF and Popular methods : SVD and Popular are fast but not very accurate, UBCF is quite accurate but slow. LIBMF seems to be the most interesting model, being both very accurate and fast.
 \paragraph*{}
-However, one should keep in mind that these results -- both in time and accuracy -- are for very small datasets. It is therefor necessary to carry on and try to predict the performance of these models on larger datasets.
+However, one should keep in mind that these results -- both in time and accuracy -- are for very small datasets. It is therefore necessary to carry on and try to predict the performance of these models on larger datasets.
 \paragraph*{}
 ```{r, echo = FALSE, fig.cap = "Computing time of the 4 best models (linear and quadratic time scales)"}
 plot(
@@ -260,7 +260,7 @@ The SVD method has three parameters :
 
 * *k* : the rank of the SVD approximation (default : 10)
 * *maxiter* : the maximum number of iterations (default : 100)
-* *normalize* : the normalization method, *center* or *Z-score* (default : center
+* *normalize* : the normalization method, *center* or *Z-score* (default : center)
 \paragraph*{}
 ```{r out.width = "90%", echo = FALSE}
 plot(plot_fitting5 + 
@@ -324,7 +324,7 @@ The user (*costp_l2*) and item (*costq_l2*) regularization factors seem to have 
 \paragraph*{}
 The accuracy seems to considerably decrease for higher values of *costp_l2* and *costq_l2*. However, for values below 0.01  (default value), the potential accuracy gains seem to be quite marginal.
 \paragraph*{}
-Apart from some outliers, most of the *costp_l2* and *costq_l2* values seem to have little effect on computing time, with 95% confidence intervals widths of `r round(LIBMF_costp_CI,2)` seconds for *costp_l2* and `r round(LIBMF_costp_CI,2)` seconds for *costq_l2*.
+Apart from some outliers, most of the *costp_l2* and *costq_l2* values seem to have little effect on computing time, with 95% confidence intervals widths of `r round(LIBMF_costp_CI,2)` seconds for *costp_l2* and `r round(LIBMF_costq_CI,2)` seconds for *costq_l2*.
 
 \paragraph*{}
 ```{r out.width = "90%", echo=FALSE}
@@ -375,7 +375,7 @@ The aim of this study was to build a recommendation system based on the recommen
 \paragraph*{}
 The LIBMF method proved to give outstanding performance, with excellent accuracy (RMSE = `r final_rmse`) in a reasonable amount of time (t = `r final_time` s).
 \paragraph*{}
-One of the limitations of this study is the inanibility to test the code on any MacOS system, although it was run and tested on two different systems (R 4.1.0 on Windows, R 3.6.3 on Linux).
+One of the limitations of this study is the inability to test the code on any MacOS system, although it was run and tested on two different systems (R 4.1.0 on Windows, R 3.6.3 on Linux).
 \paragraph*{}
 Furthermore, despite being oriented toward both accuracy and performance in terms of computing time of the recommendation algorithm, there is still a considerable room for improvement in the performance field of the selection and tuning processes themselves. Future work will be dedicated to parallelization and further code optimization.
 
