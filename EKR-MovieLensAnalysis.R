@@ -394,18 +394,6 @@ save.image(file = "EKR-MovieLens.RData")
 # Load edx and validation datasets
 load("edxval.RData")
 
-#############################################################################
-#   STRICT INTERPRETATION OF THE "DON'T TOUCH THE VALIDATION SET" RULE      #
-#############################################################################
-
-
-
-
-#############################################################################
-#   LOOSER INTERPRETATION OF THE "DON'T TOUCH THE VALIDATION SET" RULE      #
-#############################################################################  Faster, simpler
-
-
 # Remove useless movies in the trainingset 
 # (training/validation must have the same movies, and adding lines to the validation set is forbidden in the rules)
 edx <- semi_join(edx, validation, by = "movieId")
